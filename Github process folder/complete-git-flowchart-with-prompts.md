@@ -1,0 +1,575 @@
+# Complete Git Workflow - Interactive Mermaid Flowchart
+## All Cursor Prompts Embedded in Flowchart
+
+**Environments:** Local (laptop) -> Staging -> Prod
+**Promotion flow:** `feature/* -> staging -> prod`
+
+There is no `dev` branch. Your laptop IS the dev environment.
+`staging` is the integration branch: all PRs land there.
+
+---
+
+## 🎯 How to Use This Flowchart
+
+1. **Follow the flowchart** from start to your current step
+2. **Copy the prompt** shown in the node
+3. **Paste into Cursor** and let it execute
+4. **Follow the arrows** to next step
+
+---
+
+## 📊 MAIN WORKFLOW FLOWCHART
+
+```mermaid
+flowchart TD
+    Start([🚀 Start: Have Working Code Folder]) --> A1{Is this a<br/>new project?}
+
+    A1 -->|Yes - New Project| B1["📝 PROMPT:<br/>I have a working code folder at /path/to/project.<br/>I need to:<br/>1. Initialize this as Git repository<br/>2. Create .gitignore for [tech stack]<br/>3. Stage all files<br/>4. Make initial commit 'Initial commit'<br/>Execute these Git commands"]
+
+    B1 --> B2["✅ Cursor Executes:<br/>git init<br/>Create .gitignore<br/>git add .<br/>git commit -m 'Initial commit'"]
+
+    B2 --> C1["📝 PROMPT:<br/>Guide me to create GitHub repo.<br/>After I create it and get URL,<br/>link my local repo to it.<br/>URL: paste URL here<br/>Add remote origin and verify"]
+
+    C1 --> C2["⚠️ MANUAL STEP:<br/>Go to GitHub.com<br/>Click + → New Repository<br/>Name it, don't initialize<br/>Copy the URL"]
+
+    C2 --> C3["✅ Cursor Executes:<br/>git remote add origin URL<br/>git remote -v"]
+
+    C3 --> D1["📝 PROMPT:<br/>Set up two-branch workflow:<br/>- prod for production<br/>- staging for integration and QA<br/>My laptop is the dev environment,<br/>so no dev branch is needed.<br/>Rename main to prod, create staging,<br/>push both with upstream,<br/>switch to staging, show all branches"]
+
+    D1 --> D2["✅ Cursor Executes:<br/>git branch -M prod<br/>git branch staging<br/>git push -u origin prod staging<br/>git checkout staging<br/>git branch -a"]
+
+    A1 -->|No - Existing Repo| E1["📝 PROMPT:<br/>I'm new developer joining team.<br/>Clone: paste-github-URL<br/>Navigate into directory<br/>View all branches<br/>Switch to staging branch<br/>Show status and confirm setup"]
+
+    D2 --> StagingReady["🎯 Repository Ready<br/>On Staging Branch"]
+    E1 --> E2["✅ Cursor Executes:<br/>git clone URL<br/>cd repo-name<br/>git branch -a<br/>git checkout staging<br/>git status"]
+    E2 --> StagingReady
+
+    StagingReady --> SyncStaging["📝 PROMPT (Mandatory - Reverse Sync):<br/>Before starting new feature,<br/>ensure staging has all prod changes:<br/>Switch to staging, pull latest staging,<br/>Check commits in prod not in staging,<br/>If any exist: merge prod into staging,<br/>resolve conflicts, push staging"]
+
+    SyncStaging --> SyncStaging2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git log prod --not staging --oneline<br/>If behind: git merge prod<br/>Resolve conflicts if any<br/>git push origin staging"]
+
+    SyncStaging2 --> F1["📝 PROMPT:<br/>Staging is synced with prod.<br/>Start new feature: describe-feature<br/>Create feature branch:<br/>feature/descriptive-name<br/>Switch to it and confirm"]
+
+    F1 --> F2["✅ Cursor Executes:<br/>git checkout -b feature/name<br/>git branch"]
+
+    F2 --> G1["📝 PROMPT:<br/>Implement feature-description<br/>Requirements:<br/>- requirement-1<br/>- requirement-2<br/>Analyze codebase, create/modify files,<br/>implement following best practices,<br/>add error handling and tests,<br/>follow existing code style"]
+
+    G1 --> G2["✅ Cursor Implements:<br/>Creates/modifies files<br/>Writes code<br/>Adds tests<br/>Shows changes"]
+
+    G2 --> LocalTest["💻 LOCAL TEST:<br/>Run the app on your laptop<br/>Verify the change works<br/>This is your dev environment"]
+
+    LocalTest --> H1{More coding<br/>needed?}
+    H1 -->|Yes| G1
+
+    H1 -->|No| I1["📝 PROMPT:<br/>Made changes for feature-name.<br/>Before committing:<br/>Show git status<br/>Show summary of changed files<br/>Show detailed diff<br/>Identify files for .gitignore<br/>Review my changes"]
+
+    I1 --> I2["✅ Cursor Executes:<br/>git status<br/>git diff --stat<br/>git diff<br/>Shows review"]
+
+    I2 --> J1["📝 PROMPT:<br/>Ready to commit feature-name<br/>Changes made:<br/>- summary-1<br/>- summary-2<br/>Stage all files,<br/>generate conventional commit message,<br/>execute commit,<br/>show confirmation"]
+
+    J1 --> J2["✅ Cursor Executes:<br/>git add .<br/>Generates message:<br/>feat: description<br/>- detail 1<br/>- detail 2<br/>git commit -m 'message'"]
+
+    J2 --> K1{Need more<br/>commits?}
+    K1 -->|Yes| G1
+
+    K1 -->|No| PrePush1["📝 PROMPT:<br/>Before pushing (mandatory):<br/>Update feature branch with latest staging.<br/>Switch to staging, pull latest<br/>Switch back to feature branch<br/>Merge staging into feature<br/>Handle conflicts if any<br/>Show result. Then I'll push and create PR"]
+
+    PrePush1 --> PrePush2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git checkout feature/name<br/>git merge staging<br/>Shows result or helps resolve conflicts"]
+
+    PrePush2 --> L1["📝 PROMPT:<br/>Push feature branch 'branch-name'<br/>to GitHub.<br/>Push with upstream tracking<br/>Show push confirmation<br/>Provide PR creation instructions"]
+
+    L1 --> L2["✅ Cursor Executes:<br/>git push -u origin feature/name<br/>Shows output<br/>Provides PR guidance"]
+
+    L2 --> M1["📝 PROMPT:<br/>Generate comprehensive PR title<br/>and description for feature-name:<br/>- What changed<br/>- Why changed<br/>- How to test<br/>- Breaking changes<br/>- Related issues<br/>Format for GitHub PR"]
+
+    M1 --> M1b["✅ Cursor Generates:<br/>PR Title: feat: description<br/>PR Body with sections:<br/>Summary, Changes, Testing,<br/>Breaking Changes, Issues"]
+
+    M1b --> M2["⚠️ MANUAL STEP:<br/>Go to GitHub<br/>Create Pull Request<br/>base: staging ← compare: feature/name<br/>Copy title/description from Cursor above<br/>Add reviewers"]
+
+    M2 --> M3{Peer Review<br/>Status?}
+
+    M3 -->|Changes Requested| N1["📝 PROMPT:<br/>My PR received review comments:<br/>paste-comments-here<br/>Analyze feedback<br/>Implement requested changes<br/>Show what you're changing<br/>Stage changes<br/>Commit: 'fix: Address peer review'<br/>Push to update PR"]
+
+    N1 --> N2["✅ Cursor Executes:<br/>Makes code changes<br/>git add .<br/>git commit -m 'fix: review'<br/>git push"]
+
+    N2 --> M3
+
+    M3 -->|Needs Update<br/>Behind Base| UB1["📝 PROMPT:<br/>PR can't merge - behind base branch.<br/>Update feature branch with latest staging.<br/>Switch to staging, pull latest<br/>Switch back to feature branch<br/>Merge staging into feature<br/>Handle conflicts if any<br/>Push updated feature branch"]
+
+    UB1 --> UB2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git checkout feature/name<br/>git merge staging<br/>git push"]
+
+    UB2 --> M3
+
+    M3 -->|Closed/Rejected| CL1["📝 PROMPT:<br/>PR was closed without merging.<br/>Reason: describe-reason<br/>Cleanup: switch to staging<br/>Pull latest staging<br/>Delete local feature branch<br/>Delete remote branch if pushed<br/>Confirm cleanup"]
+
+    CL1 --> CL2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git branch -d feature/name<br/>git push origin --delete feature/name<br/>git branch -a"]
+
+    CL2 --> P1
+
+    M3 -->|Approved & Merged| O1["📝 PROMPT:<br/>PR for feature-name merged into staging<br/>Switch to staging branch<br/>Pull latest from remote<br/>Delete local feature branch<br/>Confirm on staging with latest<br/>Show recent commit history"]
+
+    O1 --> O2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git branch -d feature/name<br/>git log --oneline -5"]
+
+    O2 --> Q4["✅ Staging Updated<br/>Merging the PR IS<br/>the staging deploy"]
+
+    Q4 --> S1["⚠️ TESTING PHASE:<br/>Deploy staging branch<br/>Run QA tests<br/>Perform UAT<br/>Verify all features"]
+
+    S1 --> S2{Tests<br/>Passed?}
+
+    S2 -->|No - Bugs Found| SB1["📝 PROMPT:<br/>Bug found in staging testing.<br/>Bug description: details-here<br/>Switch to staging branch<br/>Pull latest staging<br/>Create bugfix branch:<br/>bugfix/bug-description<br/>Switch to it and confirm"]
+
+    SB1 --> SB2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git checkout -b bugfix/bug-name<br/>git status"]
+
+    SB2 --> G1
+
+    S2 -->|Yes| P1{More features<br/>before release?}
+
+    P1 -->|Yes| SyncStaging
+
+    P1 -->|No - Ready for Prod| U1["📝 PROMPT:<br/>Staging tested and approved.<br/>Ready to deploy to production.<br/>Switch to prod branch<br/>Pull latest prod<br/>Merge staging into prod<br/>Handle conflicts if any<br/>Push updated prod<br/>Confirm deployment"]
+
+    U1 --> U2["✅ Cursor Executes:<br/>git checkout prod<br/>git pull origin prod<br/>git merge staging<br/>git push origin prod"]
+
+    U2 --> V1["📝 PROMPT:<br/>Production deployment complete.<br/>Tag this release:<br/>Version: v1.2.0<br/>Description: brief-release-notes<br/>Create annotated tag<br/>Push tag to GitHub<br/>Show confirmation<br/>List all existing tags"]
+
+    V1 --> V2["✅ Cursor Executes:<br/>git tag -a v1.2.0 -m 'Release'<br/>git push origin v1.2.0<br/>git tag -l"]
+
+    V2 --> W1{Next<br/>Action?}
+
+    W1 -->|New Feature| SyncStaging
+    W1 -->|Production Bug| HF1
+    W1 -->|Done| End([✅ Workflow Complete])
+
+    %% Production Hotfix Flow (only for bugs in production, not staging)
+    HF1["📝 PROMPT:<br/>URGENT: Critical bug in PRODUCTION.<br/>Bug description: details-here<br/>Create hotfix branch from prod:<br/>hotfix/bug-description<br/>Switch to this branch<br/>Show current state"]
+
+    HF1 --> HF2["✅ Cursor Executes:<br/>git checkout prod<br/>git pull origin prod<br/>git checkout -b hotfix/bug-name<br/>git status"]
+
+    HF2 --> G1
+
+    style Start fill:#90EE90
+    style End fill:#90EE90
+    style StagingReady fill:#87CEEB
+    style LocalTest fill:#87CEEB
+    style C2 fill:#FFD700
+    style M1 fill:#FFD700
+    style S1 fill:#FFA500
+    style M3 fill:#DDA0DD
+    style S2 fill:#DDA0DD
+    style H1 fill:#F0E68C
+    style K1 fill:#F0E68C
+    style PrePush1 fill:#FFD700
+    style PrePush2 fill:#FFD700
+    style P1 fill:#F0E68C
+    style W1 fill:#F0E68C
+    style SB1 fill:#FFA500
+    style HF1 fill:#FF6347
+    style SyncStaging fill:#FF8C00
+    style SyncStaging2 fill:#FF8C00
+    style Q4 fill:#90EE90
+```
+
+---
+
+## 📊 DAILY WORKFLOW FLOWCHART
+
+```mermaid
+flowchart LR
+    Morning([☀️ Start of Day]) --> M1["📝 PROMPT:<br/>Starting work day.<br/>Ensure I have latest code.<br/>Show current branch<br/>Switch to staging<br/>Pull latest from remote staging<br/>Show if any new changes<br/>List all local branches"]
+
+    M1 --> M2["✅ Cursor Executes:<br/>git branch<br/>git checkout staging<br/>git pull origin staging<br/>git log -5<br/>git branch -a"]
+
+    M2 --> Work["💻 Work on Code<br/>Follow main workflow<br/>(Create feature branch first!)"]
+
+    Work --> E0{End of day:<br/>On feature<br/>branch?}
+
+    E0 -->|Yes - On feature branch| E1["📝 PROMPT:<br/>End of work day.<br/>Backup work-in-progress.<br/>Show changed files<br/>Stage all changes<br/>Commit: 'wip: what-I-worked-on-today'<br/>Push to remote<br/>Confirm backup"]
+
+    E0 -->|No - On staging/prod| E0b["⚠️ WARNING:<br/>Don't commit directly to staging!<br/>Create feature branch first:<br/>git checkout -b feature/wip-description<br/>Then commit and push"]
+
+    E0b --> E1
+
+    E1 --> E2["✅ Cursor Executes:<br/>git status<br/>git add .<br/>git commit -m 'wip: today's work'<br/>git push<br/>Shows confirmation"]
+
+    E2 --> Evening([🌙 End of Day])
+
+    style Morning fill:#FFFACD
+    style Evening fill:#191970,color:#FFFFFF
+    style Work fill:#87CEEB
+    style E0 fill:#DDA0DD
+    style E0b fill:#FFD700
+```
+
+---
+
+## 📊 STAGING BUGFIX WORKFLOW FLOWCHART
+
+> **Use this when:** Bug found during staging/QA testing (code not yet in production)
+
+```mermaid
+flowchart TD
+    Bug([🔧 Staging Bug Found<br/>During QA Testing]) --> SB1["📝 PROMPT:<br/>Bug found in staging testing.<br/>Bug description: describe-bug<br/>Switch to staging branch<br/>Pull latest staging<br/>Create bugfix branch:<br/>bugfix/bug-description<br/>Switch to it and confirm"]
+
+    SB1 --> SB2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git checkout -b bugfix/bug-name<br/>git status"]
+
+    SB2 --> SB3["📝 PROMPT:<br/>Implement fix for bug-description<br/>Requirements: fix-details<br/>Analyze code, implement fix,<br/>add tests, follow best practices"]
+
+    SB3 --> SB4["✅ Cursor Implements:<br/>Makes code changes<br/>Fixes bug<br/>Adds tests"]
+
+    SB4 --> SB5["📝 PROMPT:<br/>Fixed staging bug in bugfix branch.<br/>Changes: describe-fix<br/>Stage and commit:<br/>'fix: description'<br/>Push bugfix branch<br/>Create PR to staging"]
+
+    SB5 --> SB6["✅ Cursor Executes:<br/>git add .<br/>git commit -m 'fix: bug description'<br/>git push -u origin bugfix/bug-name<br/>Provides PR guidance"]
+
+    SB6 --> SB7["⚠️ MANUAL STEP:<br/>Create PR to staging<br/>Get review & merge"]
+
+    SB7 --> SB8["📝 PROMPT:<br/>Bugfix PR merged into staging.<br/>Switch to staging, pull latest<br/>Delete bugfix branch<br/>Confirm staging has the fix"]
+
+    SB8 --> SB9["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git branch -d bugfix/bug-name<br/>git log --oneline -5"]
+
+    SB9 --> Retest([🔄 Re-test in Staging])
+
+    style Bug fill:#FFA500
+    style Retest fill:#87CEEB
+    style SB7 fill:#FFD700
+```
+
+---
+
+## 📊 HOTFIX WORKFLOW FLOWCHART (Production Bugs Only)
+
+> **Use this when:** Bug found in PRODUCTION affecting live users
+
+```mermaid
+flowchart TD
+    Bug([🚨 Production Bug Detected<br/>Live Users Affected]) --> H1["📝 PROMPT:<br/>URGENT: Critical bug in production.<br/>Bug description: describe-bug<br/>Create hotfix branch from prod:<br/>hotfix/bug-description<br/>Switch to branch<br/>Show current state"]
+
+    H1 --> H2["✅ Cursor Executes:<br/>git checkout prod<br/>git pull origin prod<br/>git checkout -b hotfix/bug-name<br/>git status"]
+
+    H2 --> H3["📝 PROMPT:<br/>Implement fix for bug-description<br/>Requirements: fix-details<br/>Analyze code, implement fix,<br/>add tests, follow best practices"]
+
+    H3 --> H4["✅ Cursor Implements:<br/>Makes code changes<br/>Fixes bug<br/>Adds tests"]
+
+    H4 --> H5["📝 PROMPT:<br/>Fixed bug in hotfix branch.<br/>Changes: describe-fix<br/>Stage and commit:<br/>'hotfix: description'<br/>Switch to prod and merge hotfix<br/>Push prod<br/>⚠️ MANDATORY: merge prod into staging, push<br/>(Skipping causes branch drift!)<br/>Delete hotfix branch<br/>Tag as patch release"]
+
+    H5 --> H6["✅ Cursor Executes:<br/>git add .<br/>git commit -m 'hotfix: fix'<br/>git checkout prod<br/>git merge hotfix/bug<br/>git push origin prod<br/>git checkout staging<br/>git merge prod<br/>git push origin staging<br/>git branch -d hotfix/bug<br/>git tag -a v1.2.1<br/>git push origin v1.2.1"]
+
+    H6 --> Fixed([✅ Hotfix Deployed<br/>Both Branches Updated])
+
+    style Bug fill:#FF6347
+    style Fixed fill:#90EE90
+```
+
+---
+
+## 📊 CONFLICT RESOLUTION FLOWCHART
+
+```mermaid
+flowchart TD
+    Conflict([⚠️ Merge Conflict Detected]) --> C1["📝 PROMPT:<br/>Merge conflicts detected.<br/>Show me conflicts with markers<br/>Explain HEAD vs incoming<br/>Suggest best resolution<br/>After I confirm, resolve<br/>Stage resolved files<br/>Complete merge commit"]
+
+    C1 --> C2["✅ Cursor Shows:<br/>Files with conflicts<br/>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD<br/>Your changes<br/>=======<br/>Their changes<br/>&gt;&gt;&gt;&gt;&gt;&gt;&gt; branch"]
+
+    C2 --> C3{Resolution<br/>Approach?}
+
+    C3 -->|Accept Yours| C4["📝 PROMPT:<br/>Keep my version HEAD<br/>for file-name<br/>Resolve and complete merge"]
+
+    C3 -->|Accept Theirs| C5["📝 PROMPT:<br/>Keep incoming version<br/>for file-name<br/>Resolve and complete merge"]
+
+    C3 -->|Manual Edit| C6["📝 PROMPT:<br/>I'll manually edit the conflict.<br/>After I save file-name,<br/>stage it and complete merge"]
+
+    C4 --> C7["✅ Cursor Executes:<br/>Resolves conflict<br/>git add file-name<br/>git commit<br/>git push"]
+
+    C5 --> C7
+    C6 --> C7
+
+    C7 --> Resolved([✅ Conflict Resolved])
+
+    style Conflict fill:#FF6347
+    style Resolved fill:#90EE90
+    style C3 fill:#DDA0DD
+```
+
+---
+
+## 📊 UNDO/REVERT FLOWCHART
+
+```mermaid
+flowchart TD
+    Problem([🔄 Need to Undo Something]) --> P1{What to<br/>undo?}
+
+    P1 -->|Last Commit<br/>Not Pushed| U1["📝 PROMPT:<br/>Made commit but need to undo.<br/>Commit NOT pushed.<br/>Show last commit details<br/>Undo but keep changes staged<br/>Show current status<br/>Confirm undone"]
+
+    U1 --> U2["✅ Cursor Executes:<br/>git log -1<br/>git reset --soft HEAD~1<br/>git status"]
+
+    P1 -->|Specific Old Commit| U3["📝 PROMPT:<br/>Revert specific commit with bug.<br/>Commit: paste-hash-or-describe<br/>Show commit details<br/>Create revert commit<br/>Show what will be reverted<br/>Execute revert<br/>Push to current branch"]
+
+    U3 --> U4["✅ Cursor Executes:<br/>git show commit-hash<br/>git revert commit-hash<br/>git push"]
+
+    P1 -->|Wrong Branch| U5["📝 PROMPT:<br/>Made changes on wrong branch.<br/>Have uncommitted changes<br/>for feature-name.<br/>Stash changes<br/>Create feature branch<br/>Apply stashed changes<br/>Show status"]
+
+    U5 --> U6["✅ Cursor Executes:<br/>git stash<br/>git checkout -b feature/name<br/>git stash pop<br/>git status"]
+
+    U2 --> Done([✅ Undone])
+    U4 --> Done
+    U6 --> Done
+
+    style Problem fill:#FFA500
+    style Done fill:#90EE90
+    style P1 fill:#DDA0DD
+```
+
+---
+
+## 📊 INFORMATION & STATUS FLOWCHART
+
+```mermaid
+flowchart TD
+    Info([📊 Need Information]) --> I1{What info<br/>needed?}
+
+    I1 -->|Current Status| S1["📝 PROMPT:<br/>Give complete git repo status:<br/>Current branch<br/>Uncommitted changes<br/>Commits ahead/behind remote<br/>All local branches<br/>Recent commit history 5<br/>Any stashed changes"]
+
+    S1 --> S2["✅ Cursor Shows:<br/>git branch<br/>git status<br/>git log --oneline -5<br/>git stash list<br/>Complete overview"]
+
+    I1 -->|All Branches| B1["📝 PROMPT:<br/>Show all branches:<br/>All local with current indicator<br/>All remote branches<br/>Tracking relationships<br/>Branches only local/remote"]
+
+    B1 --> B2["✅ Cursor Shows:<br/>git branch -a<br/>git branch -vv<br/>Complete branch info"]
+
+    I1 -->|Compare Branches| C1["📝 PROMPT:<br/>Compare branches:<br/>Commits in staging not in prod<br/>Commits in prod not in staging<br/>File differences staging vs prod"]
+
+    C1 --> C2["✅ Cursor Shows:<br/>git log staging ^prod<br/>git log prod ^staging<br/>git diff staging prod"]
+
+    I1 -->|What Will Commit| W1["📝 PROMPT:<br/>Before commit, show exactly<br/>what will be included:<br/>Files staged<br/>Changes in staged files<br/>Modified but not staged<br/>Untracked files"]
+
+    W1 --> W2["✅ Cursor Shows:<br/>git status<br/>git diff --cached<br/>git diff<br/>Complete picture"]
+
+    S2 --> InfoDone([✅ Information Retrieved])
+    B2 --> InfoDone
+    C2 --> InfoDone
+    W2 --> InfoDone
+
+    style Info fill:#87CEEB
+    style InfoDone fill:#90EE90
+    style I1 fill:#DDA0DD
+```
+
+---
+
+## 📊 SYNCING WORKFLOW FLOWCHART
+
+```mermaid
+flowchart TD
+    Sync([🔄 Need to Sync]) --> SY1{Sync<br/>scenario?}
+
+    SY1 -->|Feature Branch<br/>Behind Staging| F1["📝 PROMPT:<br/>On feature branch 'name'<br/>but staging has new changes.<br/>Need to incorporate latest staging.<br/>Show current branch/status<br/>Switch to staging, pull latest<br/>Back to feature branch<br/>Merge staging into feature<br/>Handle conflicts<br/>Show merge result"]
+
+    F1 --> F2["✅ Cursor Executes:<br/>git status<br/>git checkout staging<br/>git pull origin staging<br/>git checkout feature/name<br/>git merge staging<br/>Shows result"]
+
+    SY1 -->|Pull Latest<br/>Main Branch| M1["📝 PROMPT:<br/>Ensure I'm on branch-name<br/>Pull latest from remote<br/>Show what's new<br/>Confirm updated"]
+
+    M1 --> M2["✅ Cursor Executes:<br/>git checkout branch-name<br/>git pull origin branch-name<br/>git log -5<br/>git status"]
+
+    SY1 -->|Sync All Branches| A1["📝 PROMPT:<br/>Update all my local branches:<br/>For staging and prod:<br/>Switch to each<br/>Pull latest from remote<br/>Show summary<br/>Return to staging"]
+
+    A1 --> A2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git checkout prod<br/>git pull origin prod<br/>git checkout staging<br/>Shows summary"]
+
+    SY1 -->|Staging Behind<br/>Prod| RS1["📝 PROMPT:<br/>Staging is behind prod.<br/>Reverse sync needed:<br/>Switch to staging, pull latest staging<br/>Merge prod into staging<br/>Resolve conflicts if any<br/>Push staging<br/>Confirm staging is up to date"]
+
+    RS1 --> RS2["✅ Cursor Executes:<br/>git checkout staging<br/>git pull origin staging<br/>git merge prod<br/>Resolve conflicts if any<br/>git push origin staging<br/>git log prod --not staging --oneline<br/>Confirms: no commits behind"]
+
+    F2 --> SyncDone([✅ Synced])
+    M2 --> SyncDone
+    A2 --> SyncDone
+    RS2 --> SyncDone
+
+    style Sync fill:#FFD700
+    style SyncDone fill:#90EE90
+    style SY1 fill:#DDA0DD
+    style RS1 fill:#FF8C00
+    style RS2 fill:#FF8C00
+```
+
+---
+
+## 📊 CLEANUP WORKFLOW FLOWCHART
+
+```mermaid
+flowchart TD
+    Clean([🧹 Cleanup Needed]) --> CL1{What to<br/>clean?}
+
+    CL1 -->|Merged Feature<br/>Branches| B1["📝 PROMPT:<br/>List all local branches<br/>Identify branches merged into staging<br/>Safe to delete merged branches?<br/>After confirmation, delete them<br/>Show remaining branches"]
+
+    B1 --> B2["✅ Cursor Executes:<br/>git branch --merged staging<br/>Lists merged branches<br/>After confirmation:<br/>git branch -d branch1 branch2<br/>git branch"]
+
+    CL1 -->|Untracked Files| F1["📝 PROMPT:<br/>Show untracked files/directories<br/>Identify safe to delete<br/>build files, logs, etc.<br/>After confirmation, remove them<br/>Show clean status"]
+
+    F1 --> F2["✅ Cursor Executes:<br/>git clean -n<br/>Shows what would be deleted<br/>After confirmation:<br/>git clean -fd<br/>git status"]
+
+    CL1 -->|Old Stashes| S1["📝 PROMPT:<br/>Show all stashed changes<br/>with dates and descriptions<br/>Help identify old/unnecessary<br/>After confirmation, clear them"]
+
+    S1 --> S2["✅ Cursor Executes:<br/>git stash list<br/>After confirmation:<br/>git stash clear<br/>or<br/>git stash drop stash@{n}"]
+
+    B2 --> CleanDone([✅ Cleaned Up])
+    F2 --> CleanDone
+    S2 --> CleanDone
+
+    style Clean fill:#FFA500
+    style CleanDone fill:#90EE90
+    style CL1 fill:#DDA0DD
+```
+
+---
+
+## 🎯 QUICK COPY PROMPTS
+
+### Most Common Operations
+
+**Sync Staging with Prod (mandatory before any new feature):**
+```
+Before starting new feature: switch to staging, pull latest staging, check if staging is behind prod (git log prod --not staging --oneline). If behind, merge prod into staging, resolve conflicts if any, push staging. Confirm staging is in sync with prod.
+```
+
+**Start New Feature (after sync):**
+```
+Staging is synced with prod. Create feature branch 'feature/descriptive-name' from staging, switch to it, and confirm
+```
+
+**Commit and Push:**
+```
+Stage all changes, create conventional commit message for [feature-name], commit, and push to remote with upstream tracking
+```
+
+**Before Push - Sync with staging (mandatory):**
+```
+Before pushing my feature branch: update it with latest staging. Switch to staging, pull latest, switch back to my feature branch, merge staging into it, resolve any conflicts, then I'll push and create the PR.
+```
+
+**Generate PR Description (before creating PR):**
+```
+Generate comprehensive PR title and description for [feature-name]: what changed, why changed, how to test, breaking changes, related issues. Format for GitHub PR.
+```
+
+**After PR Merged:**
+```
+Switch to staging, pull latest changes, delete merged feature branch, confirm I'm updated
+```
+
+**Update Branch (PR behind base):**
+```
+PR can't merge - update feature branch with latest staging. Switch to staging, pull latest, switch to feature branch, merge staging into feature, handle conflicts, push updated branch.
+```
+
+**PR Closed/Rejected (cleanup):**
+```
+PR was closed without merging. Switch to staging, pull latest, delete local feature branch, delete remote branch if pushed, confirm cleanup.
+```
+
+**Deploy to Staging:**
+```
+Merging the PR into staging IS the staging deploy. Switch to staging, pull latest, confirm the merge landed, show recent commits.
+```
+
+**Fix Staging Bug (bug found in QA testing):**
+```
+Switch to staging, pull latest, create bugfix branch 'bugfix/description', fix the bug, commit, push, create PR to staging. After merge, pull staging and re-test.
+```
+
+**Verify Staging is in Sync with Prod:**
+```
+Check if staging is in sync with prod: show commits in prod that are not in staging (git log prod --not staging --oneline). If any exist, merge prod into staging, resolve conflicts, push staging. Confirm sync complete.
+```
+
+**Fix Production Bug (URGENT - live users affected):**
+```
+Create hotfix branch from prod, fix the bug, merge to prod and push, then MANDATORY: merge prod into staging and push (skipping causes branch drift!), delete hotfix branch, tag patch release
+```
+
+**Deploy to Production:**
+```
+Switch to prod, pull latest, merge staging into prod, push to remote, tag as version [X.Y.Z], push tag
+```
+
+**Morning Sync:**
+```
+Show current branch, switch to staging, pull latest, show recent changes, list all branches
+```
+
+**End of Day WIP (ensure on feature branch first!):**
+```
+End of work day backup. First check: am I on a feature branch? If on staging/prod, create feature branch first! Then stage all changes, commit 'wip: what-I-worked-on-today', push to remote, confirm backup.
+```
+
+**Check Status:**
+```
+Show complete git status: current branch, uncommitted changes, ahead/behind remote, recent commits
+```
+
+---
+
+## 📝 PROMPT TEMPLATES
+
+### Generic Feature Development
+```
+FEATURE: [name]
+DESCRIPTION: [details]
+REQUIREMENTS:
+- [req 1]
+- [req 2]
+
+Execute complete workflow:
+1. Sync staging with prod first (mandatory reverse sync)
+2. Create feature branch from synced staging
+3. Implement feature with tests, verify locally on my laptop
+4. Stage, commit with conventional message
+5. Push and provide PR description
+```
+
+### Staging Bugfix Template (Bugs found in QA/Staging - NOT in production)
+```
+STAGING BUG FIX
+BUG: [description found during QA/staging testing]
+FEATURE AFFECTED: [which feature introduced this bug]
+
+Execute staging bugfix workflow:
+1. Create bugfix branch from staging (not prod!)
+2. Implement fix with tests, verify locally
+3. PR to staging, get review, merge
+4. Pull latest staging
+5. Re-test in staging
+```
+
+### Hotfix Template (PRODUCTION BUGS ONLY - Live users affected)
+```
+URGENT HOTFIX - PRODUCTION BUG
+BUG: [description]
+IMPACT: [user impact - live users affected]
+
+Execute hotfix workflow:
+1. Create hotfix branch from prod
+2. Implement fix with tests
+3. Merge hotfix to prod, push prod
+4. ⚠️ MANDATORY: Merge prod into staging, push staging
+   (Skipping step 4 causes branch drift and future deploy issues!)
+5. Delete hotfix branch, tag patch release (vX.Y.Z+1)
+```
+
+### Merge Template
+```
+MERGE [source] → [target]
+
+Switch to [target], pull latest, merge [source], handle conflicts, push, confirm success
+```
+
+---
+
+## 🎨 Flowchart Color Legend
+
+- 🟢 **Green**: Start/End points, Success states
+- 🔵 **Blue**: Ready states, Information nodes, Local/laptop work
+- 🟡 **Yellow**: Manual steps, Decision points
+- 🟠 **Orange**: Warning/Testing phases
+- 🟣 **Purple**: Review/Decision points
+- 🔴 **Red**: Errors/Bugs/Conflicts
+
+---
+
+**You now have everything in visual flowcharts with prompts! Just follow the arrows and copy the prompts.** 🚀

@@ -1,0 +1,32 @@
+---
+description: Persistent context: AI-native Product Manager (Fintech)
+alwaysApply: true
+---
+
+# User Context (Always Apply)
+
+## Who the user is
+- Vishal Chaudhari (Pune, India), Product Manager with ~12 years of experience.
+- Goal: become an AI-Native Product Manager using Claude Code (primary) and Cursor (secondary) for hands-on learning and building.
+
+## Domain focus
+- Fintech: MSME lending, rural payments/banking enablement, DS-driven sales/distributor productivity, Account Aggregator ecosystem, risk/fraud/collections workflows.
+
+## Current strengths to leverage
+- Strong PRD + execution discipline; cross-functional leadership (Eng/Design/QA/Data/Sales/Ops).
+- Data + insights product building (instrumentation, funnels, metrics, experimentation mindset).
+- Ability to prototype fast using AI-assisted tools (Cursor, n8n, Replit) and validate with users.
+
+## Core capability to develop: AI business transformation (as a PM)
+- Identify high-ROI AI opportunities (workflow selection, value sizing, feasibility) and drive adoption, not just model delivery.
+- Design AI products with measurable outcomes: metric trees, baselines, experiment design, and instrumentation from day 1.
+- Translate business workflows into AI-ready systems: data capture, labeling strategy, feedback loops, and process redesign.
+- Build and ship safely in fintech: policy/compliance alignment, privacy/security, auditability, and human-in-the-loop controls.
+- Evaluation literacy: offline metrics vs online impact, error taxonomy, red-teaming, monitoring, and drift management.
+- Operating model leadership: align DS/Eng/Ops on cadence, SLAs, change management, enablement, and governance.
+
+## How the assistant should work with the user
+- Default outputs: crisp PRD sections, decision docs, experiment plans, metric trees, rollout plans, and prototype-first approaches.
+- Tie AI features to fintech realities: compliance, risk, trust, explainability, auditability, safety, and measurable business impact.
+- Prefer “build-to-learn” with small prototypes (n8n/React/scripts) + clear evaluation criteria over generic theory.
+- Use practical templates and examples tailored to fintech (lending journeys, underwriting, KYC, repayment/collections, agent/field workflows).
