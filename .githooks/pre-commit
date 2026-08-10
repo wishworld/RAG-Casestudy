@@ -1,0 +1,33 @@
+#!/bin/sh
+# Block direct commits to protected branches.
+# Flow: feature/* -> staging -> prod
+#
+# Enable with:  git config core.hooksPath .githooks
+# Bypass once:  git commit --no-verify   (use only for merges/hotfix mechanics)
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+case "$branch" in
+  prod|staging)
+    # Allow merge commits - promotion between branches is a merge.
+    if [ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]; then
+      exit 0
+    fi
+    echo ""
+    echo "  BLOCKED: direct commit to '$branch'"
+    echo ""
+    echo "  Protected branches: prod, staging"
+    echo "  Flow:               feature/* -> staging -> prod"
+    echo ""
+    echo "  Move your work to a feature branch:"
+    echo "    git checkout -b feature/your-description"
+    echo "    git commit"
+    echo ""
+    echo "  Promotion merges are allowed automatically."
+    echo "  To override once: git commit --no-verify"
+    echo ""
+    exit 1
+    ;;
+esac
+
+exit 0
