@@ -2,80 +2,322 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PDF to Markdown - Stage 1</title>
+<title>RAG Knowledge Assistant</title>
 <style>
-  body { font-family: -apple-system, sans-serif; margin: 0; padding: 24px; background: #f7f7f8; color: #1a1a1a; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .sub { color: #666; margin-bottom: 20px; font-size: 13px; }
-  .upload-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
-  input[type=file] { flex: 1; }
-  button { padding: 8px 16px; background: #1a1a1a; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-  button:disabled { background: #999; cursor: not-allowed; }
-  select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
-  .status { margin-bottom: 16px; font-size: 13px; color: #444; }
+  :root {
+    --bg: #f4ede0;
+    --surface: #fbf7ee;
+    --surface-alt: #efe6d4;
+    --border: #ddd0b8;
+    --border-strong: #c9b896;
+    --ink: #2e2418;
+    --ink-soft: #564939;
+    --ink-faint: #71624a;
+    --accent: #3f5d43;
+    --accent-hover: #32492f;
+    --accent-soft: #e2ead9;
+    --accent-soft-text: #2f462f;
+    --success: #3f5d43;
+    --success-soft: #e2ead9;
+    --danger: #8a3c26;
+    --danger-soft: #f3e2da;
+    --warning-soft: #f0e2c4;
+    --warning-text: #6e4813;
+    --mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
+    --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    --radius: 10px;
+    --radius-sm: 7px;
+    --shadow-sm: 0 1px 2px rgba(46, 36, 24, 0.05);
+    --shadow-md: 0 4px 14px rgba(46, 36, 24, 0.08), 0 1px 3px rgba(46, 36, 24, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: var(--serif);
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app-shell { max-width: 1180px; margin: 0 auto; padding: 28px 32px 80px; }
+
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px;
+    padding-bottom: 18px; border-bottom: 1px solid var(--border);
+  }
+  .app-title { display: flex; align-items: center; gap: 12px; }
+  .app-title .logo-mark {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--surface); font-weight: 700; font-size: 17.5px; font-family: var(--serif);
+    flex-shrink: 0; box-shadow: var(--shadow-sm);
+  }
+  .app-title h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.01em; font-family: var(--serif); }
+  .app-title .app-subtitle { font-size: 14px; color: var(--ink-faint); margin-top: 2px; font-style: italic; }
+  .app-header-meta {
+    font-size: 12.5px; color: var(--ink-soft); font-family: var(--mono);
+    background: var(--accent-soft); padding: 4px 11px; border-radius: 20px; letter-spacing: 0.02em;
+  }
+
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px 0; letter-spacing: -0.01em; font-family: var(--serif); }
+  h2 { font-size: 16.5px; font-weight: 600; margin: 0; font-family: var(--serif); }
+  .sub { color: var(--ink-soft); margin-bottom: 20px; font-size: 15.5px; line-height: 1.65; font-style: italic; }
+
+  .upload-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+
+  input[type=file] {
+    flex: 1; font-size: 14.5px; padding: 9px 10px; border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-sm); background: var(--surface-alt); color: var(--ink-soft);
+    font-family: var(--mono);
+  }
+
+  input[type=text], input[type=number] {
+    padding: 10px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    font-size: 15.5px; font-family: var(--mono); background: var(--surface); color: var(--ink);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type=text]:focus, input[type=number]:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  button {
+    padding: 10px 18px; background: var(--accent); color: var(--surface); border: none;
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 14.5px; font-weight: 600;
+    font-family: var(--mono); transition: background 0.15s, transform 0.05s; white-space: nowrap;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { background: var(--border-strong); color: var(--surface); cursor: not-allowed; }
+  button.btn-secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--border-strong); }
+  button.btn-secondary:hover:not(:disabled) { background: var(--surface-alt); border-color: var(--ink-faint); }
+  button.btn-danger { background: var(--danger); }
+  button.btn-danger:hover:not(:disabled) { background: #8a3c26; }
+
+  select {
+    padding: 10px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    font-size: 14.5px; font-family: var(--mono); background: var(--surface); color: var(--ink);
+  }
+
+  .status {
+    margin-bottom: 18px; font-size: 14px; color: var(--ink-soft); min-height: 18px;
+    font-family: var(--mono);
+  }
+  .status.status-error {
+    color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger);
+    border-radius: var(--radius-sm); padding: 10px 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .status.status-success {
+    color: var(--success); background: var(--success-soft); border: 1px solid var(--success);
+    border-radius: var(--radius-sm); padding: 10px 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .status-icon { flex-shrink: 0; font-weight: 700; }
+
+  .empty-state {
+    text-align: center; padding: 32px 20px; color: var(--ink-faint); font-size: 14px;
+    font-style: italic; border: 1.5px dashed var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface-alt); grid-column: 1 / -1;
+  }
+
+  /* Stale-result badge - shown when a stage's cached output no longer
+     matches the current Stage 6 normalized query */
+  .stale-badge {
+    display: none; align-items: center; gap: 6px; font-size: 12.5px; font-family: var(--mono);
+    color: var(--warning-text); background: var(--warning-soft); border: 1px solid var(--warning-text);
+    border-radius: 20px; padding: 4px 12px; margin-bottom: 10px; width: fit-content;
+  }
+  .stale-badge.visible { display: flex; }
+
+  .pipeline-progress {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 20px; flex-wrap: wrap;
+    padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  }
+  .pipeline-progress .step-dot {
+    width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-family: var(--mono); font-weight: 700; background: var(--surface-alt);
+    color: var(--ink-faint); border: 1.5px solid var(--border); flex-shrink: 0; transition: all 0.15s;
+  }
+  .pipeline-progress .step-dot.done { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+  .pipeline-progress .step-dot.active { background: var(--warning-soft); color: var(--warning-text); border-color: var(--warning-text); }
+  .pipeline-progress .step-dot.error { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+  .pipeline-progress .step-sep { width: 14px; height: 1.5px; background: var(--border-strong); flex-shrink: 0; }
+  .pipeline-progress .progress-label { font-size: 12.5px; color: var(--ink-soft); font-family: var(--mono); margin-left: 8px; }
+
   .panes { display: flex; gap: 16px; }
-  .pane { flex: 1; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; min-height: 400px; max-height: 75vh; overflow-y: auto; }
-  .pane h2 { font-size: 14px; margin: 0 0 12px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; }
-  pre { white-space: pre-wrap; word-wrap: break-word; font-size: 13px; line-height: 1.5; }
-  .md-rendered h1, .md-rendered h2, .md-rendered h3 { margin-top: 16px; }
+  .pane {
+    flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; min-height: 400px; max-height: 75vh; overflow-y: auto; box-shadow: var(--shadow-sm);
+  }
+  .pane h2 { font-size: 13px; margin: 0 0 12px 0; color: var(--ink-faint); border-bottom: 1px solid var(--border);
+    padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; font-family: var(--mono); }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-size: 15.5px; line-height: 1.6; font-family: var(--mono); margin: 0; }
+  .md-rendered { font-size: 15.5px; line-height: 1.7; }
+  .md-rendered h1, .md-rendered h2, .md-rendered h3 { margin-top: 16px; font-family: var(--serif); }
   .md-rendered table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-  .md-rendered td, .md-rendered th { border: 1px solid #ddd; padding: 4px 8px; font-size: 13px; }
-  .meta { font-size: 12px; color: #888; margin-top: 4px; }
+  .md-rendered td, .md-rendered th { border: 1px solid var(--border); padding: 4px 8px; font-size: 15.5px; }
+  .meta { font-size: 14px; color: var(--ink-faint); margin-top: 4px; }
+
+  /* Stage step card - the core building block for every pipeline stage */
+  .step-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px 24px; margin-top: 18px; box-shadow: var(--shadow-sm);
+  }
+  .step-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .step-num {
+    display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 12.5px;
+    color: var(--accent); background: var(--accent-soft); padding: 4px 11px; border-radius: 20px;
+    letter-spacing: 0.03em; flex-shrink: 0; font-weight: 600;
+  }
+  .step-num::before { content: '\25C6'; font-size: 8px; }
+  .step-card-titles { flex: 1; min-width: 0; }
+  .step-card-titles h2 { font-size: 17.5px; font-weight: 600; }
+  .step-card-titles .chunks-sub { margin: 6px 0 0 0; }
 
   .chunks-section { margin-top: 28px; }
-  .chunks-section h2 { font-size: 16px; margin-bottom: 4px; }
-  .chunks-sub { color: #666; font-size: 13px; margin-bottom: 14px; }
+  .chunks-section h2 { font-size: 17.5px; margin-bottom: 4px; }
+  .chunks-sub { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 14px; line-height: 1.65; }
   .chunk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-content: start; }
-  .chunk-grid.scrollable { max-height: 70vh; overflow-y: auto; padding: 4px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fafafa; }
-  .chunk-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; }
-  .chunk-card.table-type { border-left: 4px solid #b5651d; }
-  .chunk-card.text-type { border-left: 4px solid #2b6cb0; }
-  .chunk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .chunk-idx { font-weight: 600; font-size: 13px; }
-  .chunk-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eee; color: #444; }
-  .chunk-badge.table { background: #fbe7d4; color: #7a3e00; }
-  .chunk-badge.overlap { background: #e9d8fd; color: #553c9a; }
-  .chunk-badge.similarity { background: #c6f6d5; color: #22543d; font-weight: 600; }
-  .chunk-badge.embed-ok { background: #c6f6d5; color: #22543d; }
-  .chunk-badge.embed-failed { background: #fed7d7; color: #822727; }
-  .chunk-badge.embed-pending { background: #eee; color: #888; }
-  .chunk-badge.store-ok { background: #bee3f8; color: #2a4365; }
-  .chunk-badge.store-failed { background: #fed7d7; color: #822727; }
-  .chunk-badge.store-pending { background: #eee; color: #888; }
+  .chunk-grid.scrollable { max-height: 70vh; overflow-y: auto; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-alt); }
+  .chunk-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px 16px; transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .chunk-card:hover { box-shadow: var(--shadow-sm); border-color: var(--border-strong); }
+  .chunk-card.table-type { border-left: 3px solid #b5762c; }
+  .chunk-card.text-type { border-left: 3px solid var(--accent); }
+  .chunk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; }
+  .chunk-idx { font-weight: 700; font-size: 14.5px; font-family: var(--mono); color: var(--accent); }
+  .chunk-badge {
+    font-size: 12.5px; padding: 3px 9px; border-radius: 20px; background: var(--surface-alt);
+    color: var(--ink-soft); font-weight: 600; font-family: var(--mono); display: inline-block;
+    border: 1px solid var(--border);
+  }
+  .chunk-badge.table { background: var(--warning-soft); color: var(--warning-text); border-color: transparent; }
+  .chunk-badge.overlap { background: var(--accent-soft); color: var(--accent-soft-text); border-color: transparent; }
+  .chunk-badge.similarity { background: var(--success-soft); color: var(--success); font-weight: 700; border-color: transparent; }
+  .chunk-badge.embed-ok { background: var(--success-soft); color: var(--success); border-color: transparent; }
+  .chunk-badge.embed-failed { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+  .chunk-badge.embed-pending { background: var(--surface-alt); color: var(--ink-faint); }
+  .chunk-badge.store-ok { background: var(--accent-soft); color: var(--accent-soft-text); border-color: transparent; }
+  .chunk-badge.store-failed { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+  .chunk-badge.store-pending { background: var(--surface-alt); color: var(--ink-faint); }
   .search-section { margin-top: 28px; }
-  .search-section h2 { font-size: 16px; margin-bottom: 4px; }
-  .doc-row { display: flex; justify-content: space-between; align-items: center; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
-  .doc-info { font-size: 13px; }
-  .doc-info .doc-filename { font-weight: 600; }
-  .doc-info .doc-meta { color: #888; font-size: 11px; margin-top: 2px; }
-  .doc-delete-btn { background: #c53030; padding: 6px 12px; font-size: 12px; }
-  .doc-delete-btn:hover { background: #9b2c2c; }
-  .doc-empty { color: #888; font-size: 13px; padding: 8px 0; }
-  .chunk-meta { font-size: 11px; color: #888; margin-bottom: 8px; line-height: 1.5; }
-  .chunk-heading-path { font-size: 12px; color: #555; font-weight: 500; margin-bottom: 6px; }
-  .chunk-text { font-size: 12.5px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; max-height: 220px; overflow-y: auto; }
-  .chunk-text table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
-  .chunk-text td { border: 1px solid #ddd; padding: 3px 6px; }
-  .overlap-highlight { background: #f3e8ff; border-bottom: 2px dotted #9f7aea; }
+  .search-section h2 { font-size: 17.5px; margin-bottom: 4px; }
+  .doc-row {
+    display: flex; justify-content: space-between; align-items: center; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 8px;
+  }
+  .doc-info { font-size: 15.5px; }
+  .doc-info .doc-filename { font-weight: 600; font-family: var(--serif); }
+  .doc-info .doc-meta { color: var(--ink-faint); font-size: 13px; margin-top: 3px; font-family: var(--mono); }
+  .doc-delete-btn { background: transparent; color: var(--danger); padding: 6px 12px; font-size: 13px; border: 1px solid var(--danger-soft); }
+  .doc-delete-btn:hover { background: var(--danger-soft); }
+  .doc-empty { color: var(--ink-faint); font-size: 15.5px; padding: 20px 0; text-align: center; font-style: italic; }
+  .chunk-meta { font-size: 13px; color: var(--ink-faint); margin-bottom: 8px; line-height: 1.6; font-family: var(--mono); }
+  .chunk-heading-path { font-size: 14px; color: var(--ink-soft); font-weight: 600; margin-bottom: 8px; font-family: var(--serif); }
+  .chunk-text { font-size: 14.5px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; max-height: 220px; overflow-y: auto; color: var(--ink); }
+  .chunk-text table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .chunk-text td { border: 1px solid var(--border); padding: 3px 6px; }
+  .overlap-highlight { background: var(--accent-soft); border-bottom: 2px dotted var(--accent); border-radius: 2px; }
 
-  .eval-row { display: grid; grid-template-columns: 60px 1fr 100px 100px 100px; gap: 10px; align-items: center; padding: 10px 12px; background: white; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
-  .eval-row:hover { background: #fafafa; }
-  .eval-row-header { font-weight: 600; color: #666; font-size: 11px; text-transform: uppercase; background: none; border: none; cursor: default; }
-  .eval-pill { font-size: 11px; padding: 3px 8px; border-radius: 10px; text-align: center; font-weight: 600; }
-  .eval-pill.pass { background: #c6f6d5; color: #22543d; }
-  .eval-pill.fail { background: #fed7d7; color: #822727; }
-  .eval-pill.na { background: #eee; color: #888; }
-  .eval-answer-detail { display: none; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; margin: -4px 0 8px 0; font-size: 13px; white-space: pre-wrap; }
+  .calc-box {
+    font-size: 12.5px; margin-bottom: 8px; background: var(--accent-soft); color: var(--accent-soft-text);
+    padding: 7px 10px; border-radius: 20px; font-family: var(--mono);
+  }
+  .merge-box {
+    font-size: 12.5px; margin-bottom: 8px; background: var(--warning-soft); color: var(--warning-text);
+    padding: 7px 10px; border-radius: 20px; font-family: var(--mono);
+  }
 
-  .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
-  .tab-btn { background: none; color: #666; border: none; border-radius: 0; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
-  .tab-btn:hover { color: #1a1a1a; background: none; }
-  .tab-btn.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; }
+  /* Eval scorecard */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 16px 18px;
+  }
+  .stat-card .stat-label { font-size: 12.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 8px; font-family: var(--mono); }
+  .stat-card .stat-value { font-size: 27px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stat-card .stat-value.good { color: var(--success); }
+  .stat-card .stat-value.bad { color: var(--danger); }
+  .stat-card .stat-sub { font-size: 13px; color: var(--ink-faint); margin-top: 4px; font-family: var(--mono); }
+  .stat-bar { height: 4px; border-radius: 2px; background: var(--surface-alt); margin-top: 10px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; background: var(--success); border-radius: 2px; }
+  .stat-bar-fill.bad { background: var(--danger); }
+
+  .eval-row {
+    display: grid; grid-template-columns: 56px 1fr 100px 100px 100px; gap: 10px; align-items: center;
+    padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    margin-bottom: 6px; cursor: pointer; font-size: 15.5px; transition: border-color 0.15s;
+  }
+  .eval-row:hover { border-color: var(--border-strong); background: var(--surface-alt); }
+  .eval-row-header {
+    font-weight: 700; color: var(--ink-faint); font-size: 12.5px; text-transform: uppercase;
+    letter-spacing: 0.05em; background: none; border: none; cursor: default; padding: 0 14px;
+    font-family: var(--mono);
+  }
+  .eval-row-header:hover { background: none; }
+  .eval-row > div:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--serif); }
+  .eval-pill { font-size: 12.5px; padding: 4px 10px; border-radius: 20px; text-align: center; font-weight: 700; font-family: var(--mono); }
+  .eval-pill.pass { background: var(--success-soft); color: var(--success); }
+  .eval-pill.fail { background: var(--danger-soft); color: var(--danger); }
+  .eval-pill.na { background: var(--surface-alt); color: var(--ink-faint); }
+  .eval-answer-detail {
+    display: none; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px 16px; margin: -2px 0 10px 0; font-size: 15.5px; white-space: pre-wrap; line-height: 1.65;
+  }
+
+  /* Tabs - segmented control */
+  .tab-bar {
+    display: inline-flex; gap: 2px; margin-bottom: 24px; background: var(--surface-alt);
+    border: 1px solid var(--border); border-radius: 11px; padding: 3px;
+  }
+  .tab-btn {
+    background: none; color: var(--ink-soft); border: none; border-radius: 8px; padding: 8px 16px;
+    font-size: 15.5px; font-weight: 600; cursor: pointer; font-family: var(--mono);
+  }
+  .tab-btn:hover:not(.active) { color: var(--ink); background: rgba(46,36,24,0.04); }
+  .tab-btn.active { color: var(--accent); background: var(--surface); box-shadow: var(--shadow-sm); }
   .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
+  .tab-panel.active { display: block; animation: fadein 0.2s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Loading spinner for async waits */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border-strong);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .skeleton-row {
+    height: 90px; border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--surface-alt) 25%, var(--border) 50%, var(--surface-alt) 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s ease infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* Progress bar */
+  #evalProgressBar { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 20px; height: 8px; margin-top: 10px; overflow: hidden; }
+  #evalProgressFill { background: var(--accent); height: 100%; width: 0%; transition: width 0.3s; border-radius: 20px; }
+
+  details summary { cursor: pointer; font-size: 13px; color: var(--ink-faint); font-weight: 600; font-family: var(--mono); }
+  details summary:hover { color: var(--ink-soft); }
 </style>
 </head>
 <body>
+<div class="app-shell">
+
+<div class="app-header">
+  <div class="app-title">
+    <div class="logo-mark">R</div>
+    <div>
+      <h1 style="font-size:17px; margin:0;">RAG Knowledge Assistant</h1>
+      <div class="app-subtitle">Local, privacy-first retrieval-augmented generation - every stage inspectable</div>
+    </div>
+  </div>
+  <div class="app-header-meta">bge-m3 * pgvector * qwen2.5:7b</div>
+</div>
 
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-btn-input" onclick="switchTab('input')">Input</button>
@@ -87,7 +329,7 @@
 
 <div class="tab-panel active" id="tab-panel-input">
 
-  <h1>PDF -> Markdown (Stage 1)</h1>
+  <h1>PDF -> Markdown <span style="color:var(--ink-faint); font-weight:600;">(Stage 1)</span></h1>
   <div class="sub">Local pipeline: Docling layout-aware parser (headings/tables from real PDF structure)</div>
 
   <div class="upload-row">
@@ -106,30 +348,30 @@
     </div>
   </div>
 
-  <div class="chunk-trigger-row" style="margin-top:16px">
-    <button id="chunkBtn" onclick="doChunk()" disabled>Chunk (Stage 2: Docling)</button>
-    <button id="embedBtn" onclick="doEmbed()" disabled>Embed (Stage 3: bge-m3)</button>
-    <button id="storeBtn" onclick="doStore()" disabled>Store (Stage 4: pgvector)</button>
+  <div class="chunk-trigger-row" style="margin-top:16px; display:flex; gap:10px;">
+    <button id="chunkBtn" onclick="doChunk()" disabled>Chunk <span style="opacity:0.75; font-weight:500;">- Stage 2</span></button>
+    <button id="embedBtn" onclick="doEmbed()" disabled>Embed <span style="opacity:0.75; font-weight:500;">- Stage 3</span></button>
+    <button id="storeBtn" onclick="doStore()" disabled>Store <span style="opacity:0.75; font-weight:500;">- Stage 4</span></button>
   </div>
 
   <div class="chunks-section" id="chunksSection" style="display:none">
-    <h2>Chunks (Stage 2)</h2>
+    <h2>Chunks <span style="color:var(--ink-faint); font-weight:600; font-size:14px;">(Stage 2)</span></h2>
     <div class="chunks-sub" id="chunksSub"></div>
     <div class="chunk-grid scrollable" id="chunkGrid"></div>
   </div>
 
   <div class="search-section" id="searchSection" style="display:none">
-    <h2>Search (Stage 5: query the pgvector store)</h2>
+    <h2>Search <span style="color:var(--ink-faint); font-weight:600; font-size:14px;">(Stage 5: query the pgvector store)</span></h2>
     <div class="chunks-sub">Query is embedded (bge-m3) and matched against chunks stored in Postgres/pgvector via SQL cosine similarity - persists across server restarts.</div>
     <div class="upload-row">
-      <input type="text" id="searchQuery" placeholder="e.g. How much can DSM claim monthly?" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <input type="text" id="searchQuery" placeholder="e.g. How much can DSM claim monthly?" style="flex:1;">
       <button id="searchBtn" onclick="doSearch()">Search</button>
     </div>
-    <div class="chunk-grid" id="searchResults"></div>
+    <div class="chunk-grid" id="searchResults"><div class="empty-state">Run Search above to see matches here.</div></div>
   </div>
 
   <div class="chunks-section">
-    <h2>Stored documents (Postgres)</h2>
+    <h2>Stored documents <span style="color:var(--ink-faint); font-weight:600; font-size:14px;">(Postgres)</span></h2>
     <div class="chunks-sub">Every document currently persisted in pgvector. Delete removes just that document's chunks.</div>
     <button onclick="loadDocuments()" style="margin-bottom:12px">Refresh list</button>
     <div id="documentsList"></div>
@@ -139,96 +381,155 @@
 
 <div class="tab-panel" id="tab-panel-query">
 
-  <h1>Query Processing (Stage 6)</h1>
-  <div class="sub">Light normalization: unicode + whitespace cleanup only - no LLM, no rewriting.</div>
+  <h1>Query Pipeline</h1>
+  <div class="sub">Every stage below is independently triggerable and inspectable - nothing auto-chains unless you use Run Full Pipeline. Run top to bottom, or jump straight to a stage once its input is filled in.</div>
 
-  <div class="upload-row">
-    <input type="text" id="rawQuery" placeholder="e.g.   AEPS   error 91 " style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
-    <button id="normalizeBtn" onclick="doNormalize()">Normalize</button>
+  <div class="step-card" style="margin-top:0;">
+    <div class="upload-row" style="margin-bottom:0;">
+      <input type="text" id="pipelineQuestion" placeholder="Type a question, e.g. What is the fiscal deficit target for 2026-27?" style="flex:1;">
+      <button id="runPipelineBtn" onclick="runFullPipeline()">Run Full Pipeline &#9654;</button>
+    </div>
+    <div class="chunks-sub" style="margin:10px 0 0;">Runs Stages 6 -&gt; 7 -&gt; 8 -&gt; 9 -&gt; 10 -&gt; 11 -&gt; 12 in sequence. Individual stage cards below still work independently for debugging.</div>
+    <div class="pipeline-progress" id="pipelineProgress" style="display:none; margin-top:14px;">
+      <div class="step-dot" data-stage="6">6</div><div class="step-sep"></div>
+      <div class="step-dot" data-stage="7">7</div><div class="step-sep"></div>
+      <div class="step-dot" data-stage="8">8</div><div class="step-sep"></div>
+      <div class="step-dot" data-stage="9">9</div><div class="step-sep"></div>
+      <div class="step-dot" data-stage="10">10</div><div class="step-sep"></div>
+      <div class="step-dot" data-stage="11">11</div><div class="step-sep"></div>
+      <div class="step-dot" data-stage="12">12</div>
+      <span class="progress-label" id="pipelineProgressLabel"></span>
+    </div>
   </div>
 
-  <div class="panes" id="normalizeResult" style="display:none">
-    <div class="pane" style="min-height:auto">
-      <h2>Raw query</h2>
-      <pre id="rawQueryOut"></pre>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">6</div>
+      <div class="step-card-titles">
+        <h2>Query Normalization</h2>
+        <div class="chunks-sub">Light normalization: unicode + whitespace cleanup only - no LLM, no rewriting.</div>
+      </div>
     </div>
-    <div class="pane" style="min-height:auto">
-      <h2>Normalized query</h2>
-      <pre id="normalizedQueryOut"></pre>
-    </div>
-  </div>
-  <div class="chunks-sub" id="normalizeStatus"></div>
-
-  <div class="search-section" style="margin-top:32px">
-    <h2>Semantic Search (Stage 7: query embedding -> vectorstore.search())</h2>
-    <div class="chunks-sub">Takes its input from Stage 6's normalized output above. Embedded (bge-m3), then matched against every stored chunk via pgvector cosine similarity. Edit below if needed before searching.</div>
     <div class="upload-row">
-      <input type="text" id="stage7Query" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <input type="text" id="rawQuery" placeholder="e.g.   AEPS   error 91 " style="flex:1;">
+      <button id="normalizeBtn" onclick="doNormalize()">Normalize</button>
+    </div>
+    <div class="panes" id="normalizeResult" style="display:none">
+      <div class="pane" style="min-height:auto">
+        <h2>Raw query</h2>
+        <pre id="rawQueryOut"></pre>
+      </div>
+      <div class="pane" style="min-height:auto">
+        <h2>Normalized query</h2>
+        <pre id="normalizedQueryOut"></pre>
+      </div>
+    </div>
+    <div class="chunks-sub" id="normalizeStatus"></div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">7</div>
+      <div class="step-card-titles">
+        <h2>Semantic Search</h2>
+        <div class="chunks-sub">query embedding -&gt; vectorstore.search(). Takes its input from Stage 6's normalized output. Embedded (bge-m3), then matched against every stored chunk via pgvector cosine similarity. Edit below if needed before searching.</div>
+      </div>
+    </div>
+    <div class="stale-badge" id="stage7StaleBadge">&#9888; Results are from a different query - re-run to refresh</div>
+    <div class="upload-row">
+      <input type="text" id="stage7Query" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
       <button id="stage7SearchBtn" onclick="doStage7Search()">Search</button>
     </div>
     <div class="chunks-sub" id="stage7Status"></div>
-    <div class="chunk-grid scrollable" id="stage7Results"></div>
+    <div class="chunk-grid scrollable" id="stage7Results"><div class="empty-state">Run Search above to see semantic matches here.</div></div>
   </div>
 
-  <div class="search-section" style="margin-top:32px">
-    <h2>Keyword Search (Stage 8: PostgreSQL full-text search)</h2>
-    <div class="chunks-sub">Takes its input from Stage 6's normalized output above. No embedding call - exact/lexical token matching via tsvector + GIN index. Complementary to Stage 7: strong on exact codes/terms, weak on paraphrases. Edit below if needed before searching.</div>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">8</div>
+      <div class="step-card-titles">
+        <h2>Keyword Search</h2>
+        <div class="chunks-sub">PostgreSQL full-text search. Takes its input from Stage 6's normalized output. No embedding call - exact/lexical token matching via tsvector + GIN index. Complementary to Stage 7: strong on exact codes/terms, weak on paraphrases.</div>
+      </div>
+    </div>
+    <div class="stale-badge" id="stage8StaleBadge">&#9888; Results are from a different query - re-run to refresh</div>
     <div class="upload-row">
-      <input type="text" id="stage8Query" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <input type="text" id="stage8Query" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
       <button id="stage8SearchBtn" onclick="doStage8Search()">Search</button>
     </div>
     <div class="chunks-sub" id="stage8Status"></div>
-    <div class="chunk-grid scrollable" id="stage8Results"></div>
+    <div class="chunk-grid scrollable" id="stage8Results"><div class="empty-state">Run Search above to see keyword matches here.</div></div>
   </div>
 
-  <div class="search-section" style="margin-top:32px">
-    <h2>Hybrid Search (Stage 9: RRF fusion of Stage 7 + Stage 8)</h2>
-    <div class="chunks-sub">Takes its input from Stage 6's normalized output above. Runs semantic (Stage 7) and keyword (Stage 8) search in parallel, then combines both ranked lists via Reciprocal Rank Fusion - no raw-score comparison, just rank position. Edit below if needed before searching.</div>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">9</div>
+      <div class="step-card-titles">
+        <h2>Hybrid Search (RRF fusion)</h2>
+        <div class="chunks-sub">Fuses Stage 7 + Stage 8. Runs semantic and keyword search in parallel, then combines both ranked lists via Reciprocal Rank Fusion - no raw-score comparison, just rank position.</div>
+      </div>
+    </div>
+    <div class="stale-badge" id="stage9StaleBadge">&#9888; Results are from a different query - re-run to refresh</div>
     <div class="upload-row">
-      <input type="text" id="stage9Query" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <input type="text" id="stage9Query" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
       <button id="stage9SearchBtn" onclick="doStage9Search()">Search</button>
     </div>
     <div class="chunks-sub" id="stage9Status"></div>
-    <div class="chunk-grid scrollable" id="stage9Results"></div>
+    <div class="chunk-grid scrollable" id="stage9Results"><div class="empty-state">Run Search above to see fused results here.</div></div>
   </div>
 
-  <div class="search-section" style="margin-top:32px">
-    <h2>No-Answer Detection (Stage 10)</h2>
-    <div class="chunks-sub">Checks Stage 9's last result against TWO bars - passes if EITHER clears: RRF score (both sources agree) OR raw similarity (confident even if only one source found it). v1 was RRF-only and had a confirmed 56% false-negative rate on paraphrased questions - see app/eval/eval_set_v1.md. Thresholds are small-sample starting guesses - adjust and re-check freely.</div>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">10</div>
+      <div class="step-card-titles">
+        <h2>No-Answer Detection</h2>
+        <div class="chunks-sub">Checks Stage 9's last result against TWO bars - passes if EITHER clears: RRF score (both sources agree) OR raw similarity (confident even if only one source found it). Thresholds are small-sample starting guesses - adjust and re-check freely.</div>
+      </div>
+    </div>
     <div class="upload-row">
-      <label for="stage10RrfThreshold" style="font-size:13px; color:#444;">RRF threshold:</label>
-      <input type="number" id="stage10RrfThreshold" value="0.02" step="0.001" min="0" style="width:100px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
-      <label for="stage10SimilarityFloor" style="font-size:13px; color:#444;">Similarity floor:</label>
-      <input type="number" id="stage10SimilarityFloor" value="0.45" step="0.01" min="0" max="1" style="width:100px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <label for="stage10RrfThreshold" style="font-size:13.5px; color:var(--ink-soft); font-weight:600;">RRF threshold</label>
+      <input type="number" id="stage10RrfThreshold" value="0.02" step="0.001" min="0" style="width:90px;">
+      <label for="stage10SimilarityFloor" style="font-size:13.5px; color:var(--ink-soft); font-weight:600;">Similarity floor</label>
+      <input type="number" id="stage10SimilarityFloor" value="0.45" step="0.01" min="0" max="1" style="width:90px;">
       <button id="stage10CheckBtn" onclick="doStage10Check()">Check</button>
     </div>
-    <div id="stage10Banner" style="display:none; margin-top:12px; padding:12px 16px; border-radius:8px; font-size:14px; font-weight:500;"></div>
+    <div id="stage10Banner" style="display:none; margin-top:12px; padding:14px 16px; border-radius:10px; font-size:14.5px; font-weight:600;"></div>
   </div>
 
-  <div class="search-section" style="margin-top:32px">
-    <h2>Context Construction (Stage 11)</h2>
-    <div class="chunks-sub">Prepares Stage 9's surviving chunks for the LLM prompt: dedup exact repeats, merge chunks that are adjacent in the same document into one coherent block, restore document reading order (not RRF rank order), trim to a token budget by dropping lowest-relevance blocks first, then tag each with a citation marker [S1], [S2]...</div>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">11</div>
+      <div class="step-card-titles">
+        <h2>Context Construction</h2>
+        <div class="chunks-sub">Prepares Stage 9's surviving chunks for the LLM prompt: dedup exact repeats, merge chunks that are adjacent in the same document into one coherent block, restore document reading order (not RRF rank order), trim to a token budget, then tag each with a citation marker [S1], [S2]...</div>
+      </div>
+    </div>
     <div class="upload-row">
-      <label for="stage11TokenBudget" style="font-size:13px; color:#444;">Token budget:</label>
-      <input type="number" id="stage11TokenBudget" value="4000" step="100" min="100" style="width:100px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <label for="stage11TokenBudget" style="font-size:13.5px; color:var(--ink-soft); font-weight:600;">Token budget</label>
+      <input type="number" id="stage11TokenBudget" value="4000" step="100" min="100" style="width:100px;">
       <button id="stage11BuildBtn" onclick="doStage11Build()">Build Context</button>
     </div>
     <div class="chunks-sub" id="stage11Status"></div>
-    <div class="chunk-grid scrollable" id="stage11Results"></div>
+    <div class="chunk-grid scrollable" id="stage11Results"><div class="empty-state">Run Build Context above to see the assembled prompt blocks here.</div></div>
   </div>
 
-  <div class="search-section" style="margin-top:32px">
-    <h2>Answer Generation (Stage 12: qwen2.5:7b)</h2>
-    <div class="chunks-sub">Takes its question from Stage 6's normalized output above, plus Stage 11's context blocks. Sends a grounded prompt to the local LLM (Ollama, qwen2.5:7b) and shows the answer. The LLM does not search anything - Stages 6-11 already found the evidence; this stage only writes the answer from it. Edit below if needed before generating.</div>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">12</div>
+      <div class="step-card-titles">
+        <h2>Answer Generation <span style="color:var(--ink-faint); font-weight:600; font-size:14px;">(qwen2.5:7b)</span></h2>
+        <div class="chunks-sub">Takes its question from Stage 6's normalized output, plus Stage 11's context blocks. Sends a grounded prompt to the local LLM and shows the answer. The LLM does not search anything - Stages 6-11 already found the evidence.</div>
+      </div>
+    </div>
     <div class="upload-row">
-      <input type="text" id="stage12Question" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <input type="text" id="stage12Question" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
       <button id="stage12AnswerBtn" onclick="doStage12Answer()">Generate Answer</button>
     </div>
     <div class="chunks-sub" id="stage12Status"></div>
-    <div id="stage12AnswerBox" style="display:none; margin-top:12px; background:white; border:1px solid #ddd; border-radius:8px; padding:16px; font-size:14px; line-height:1.6; white-space:pre-wrap;"></div>
+    <div id="stage12AnswerBox" style="display:none; margin-top:12px; background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:18px; font-size:14px; line-height:1.65; white-space:pre-wrap;"></div>
     <details style="margin-top:10px" id="stage12PromptDetails">
-      <summary style="cursor:pointer; font-size:12px; color:#666;">Show exact prompt sent to the LLM</summary>
-      <pre id="stage12PromptOut" style="font-size:11.5px; background:#fafafa; border:1px solid #e5e5e5; border-radius:6px; padding:10px; max-height:300px; overflow-y:auto;"></pre>
+      <summary>Show exact prompt sent to the LLM</summary>
+      <pre id="stage12PromptOut" style="font-size:13px; background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; max-height:300px; overflow-y:auto; margin-top:8px;"></pre>
     </details>
   </div>
 
@@ -236,25 +537,34 @@
 
 <div class="tab-panel" id="tab-panel-eval">
 
-  <h1>RAG Eval (Stage 13)</h1>
+  <h1>RAG Evaluation <span style="color:var(--ink-faint); font-weight:600;">(Stage 13)</span></h1>
   <div class="sub">Runs a batch of questions through the FULL pipeline (Stages 6-12, including the LLM) and scores retrieval, no-answer detection, and answer quality automatically - instead of eyeballing results one at a time.</div>
 
-  <div class="search-section">
-    <h2>Run an eval set</h2>
-    <div class="chunks-sub">Each question runs through: normalize -> semantic+keyword search -> RRF fusion -> no-answer check -> context build -> LLM answer. A full run can take many minutes - progress updates live below.</div>
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-num">13</div>
+      <div class="step-card-titles">
+        <h2>Run an eval set</h2>
+        <div class="chunks-sub">Each question runs through: normalize -&gt; semantic+keyword search -&gt; RRF fusion -&gt; no-answer check -&gt; context build -&gt; LLM answer. A full run can take many minutes - progress updates live below.</div>
+      </div>
+    </div>
     <div class="upload-row">
       <select id="evalSetSelect" style="flex:1;"></select>
       <button id="evalRunBtn" onclick="doEvalRun()">Run Eval</button>
     </div>
     <div class="chunks-sub" id="evalStatus"></div>
-    <div id="evalProgressBar" style="display:none; background:#eee; border-radius:6px; height:10px; margin-top:8px; overflow:hidden;">
-      <div id="evalProgressFill" style="background:#1a1a1a; height:100%; width:0%; transition:width 0.3s;"></div>
+    <div id="evalProgressBar" style="display:none;">
+      <div id="evalProgressFill"></div>
     </div>
   </div>
 
-  <div class="search-section" id="evalSummarySection" style="display:none; margin-top:24px;">
-    <h2>Scorecard</h2>
-    <div id="evalSummaryBox" style="background:white; border:1px solid #ddd; border-radius:8px; padding:16px; font-size:14px; line-height:1.8;"></div>
+  <div class="step-card" id="evalSummarySection" style="display:none;">
+    <div class="step-card-head" style="margin-bottom:16px;">
+      <div class="step-card-titles">
+        <h2>Scorecard</h2>
+      </div>
+    </div>
+    <div id="evalSummaryBox" class="stat-row"></div>
   </div>
 
   <div class="chunks-section" id="evalResultsSection" style="display:none; margin-top:24px;">
@@ -268,6 +578,46 @@
 <script>
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Maps low-level fetch/HTTP failures to plain-language messages for the
+// failure modes actually hit during development (Ollama down, backend
+// down, DB down) - a "Server error: 500" means nothing to someone
+// demoing this without terminal access to the logs.
+function friendlyError(err, context) {
+  if (err instanceof TypeError) {
+    // fetch() throws TypeError on network failure (connection refused, DNS, etc.)
+    return "Can't reach the backend server - is `uvicorn main:app` running on port 8000?";
+  }
+  const msg = err.message || String(err);
+  if (/50[0-9]/.test(msg) && (context === "llm" || context === "embedding")) {
+    return "The local model call failed - is Ollama running? (`open -a Ollama`, then check `curl localhost:11434/api/tags`)";
+  }
+  if (/50[0-9]/.test(msg) && context === "db") {
+    return "The database call failed - is PostgreSQL running? (check with `pg_isready`)";
+  }
+  if (/50[0-9]/.test(msg)) {
+    return "The server hit an internal error. Check the backend terminal for the full traceback.";
+  }
+  return msg;
+}
+
+// Renders status text with visual weight matching its meaning - plain
+// text status updates were easy to miss, especially errors buried in
+// the same low-contrast style as routine progress messages.
+function showStatus(el, message, type) {
+  el.classList.remove("status-error", "status-success");
+  if (type === "error") {
+    el.classList.add("status-error");
+    el.innerHTML = `<span class="status-icon">&#9888;</span>${escapeHtml(message)}`;
+  } else if (type === "success") {
+    el.classList.add("status-success");
+    el.innerHTML = `<span class="status-icon">&#10003;</span>${escapeHtml(message)}`;
+  } else if (type === "loading") {
+    el.innerHTML = `<span class="spinner"></span>${escapeHtml(message)}`;
+  } else {
+    el.textContent = message;
+  }
 }
 
 // Minimal markdown -> HTML renderer (headings, bold, lists, tables, paragraphs).
@@ -336,12 +686,12 @@ async function doNormalize() {
   const resultBox = document.getElementById("normalizeResult");
 
   if (!input.value) {
-    status.textContent = "Type a query first.";
+    showStatus(status, "Type a query first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Normalizing...";
+  showStatus(status, "Normalizing...", "loading");
 
   const formData = new FormData();
   formData.append("query", input.value);
@@ -354,15 +704,17 @@ async function doNormalize() {
     document.getElementById("rawQueryOut").textContent = JSON.stringify(data.raw_query);
     document.getElementById("normalizedQueryOut").textContent = JSON.stringify(data.normalized_query);
     resultBox.style.display = "flex";
-    status.textContent = data.changed ? "Query was changed by normalization." : "Query was already clean - no change.";
+    showStatus(status, data.changed ? "Query was changed by normalization." : "Query was already clean - no change.", "success");
 
     // Stages 7, 8, 9, 12 all take their input from Stage 6's output - auto-fill, still editable.
     document.getElementById("stage7Query").value = data.normalized_query;
     document.getElementById("stage8Query").value = data.normalized_query;
     document.getElementById("stage9Query").value = data.normalized_query;
     document.getElementById("stage12Question").value = data.normalized_query;
+    currentNormalizedQuery = data.normalized_query;
+    updateStaleBadges();
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "normalize"), "error");
   } finally {
     btn.disabled = false;
   }
@@ -374,6 +726,26 @@ let lastStage7 = { query: null, results: null };
 let lastStage8 = { query: null, results: null };
 // Stage 10 re-checks this against a threshold, without a new search.
 let lastStage9Results = null;
+
+// Tracks the query each stage's CURRENT displayed results were run
+// against, vs. the latest Stage 6 output - lets us flag a stage's
+// results as stale if you edit its box directly (bypassing Stage 6)
+// or normalize a new question without re-running downstream stages.
+let currentNormalizedQuery = null;
+
+function updateStaleBadges() {
+  const check = (resultQuery, badgeId) => {
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+    const stale = resultQuery && currentNormalizedQuery && resultQuery !== currentNormalizedQuery;
+    badge.classList.toggle("visible", !!stale);
+  };
+  check(lastStage7.query, "stage7StaleBadge");
+  check(lastStage8.query, "stage8StaleBadge");
+  check(lastStage9Results ? lastStage9ResultsQuery : null, "stage9StaleBadge");
+}
+
+let lastStage9ResultsQuery = null;
 // Stage 12 answers from this, without rebuilding context.
 let lastStage11Blocks = null;
 
@@ -384,13 +756,13 @@ async function doStage7Search() {
   const results = document.getElementById("stage7Results");
 
   if (!queryInput.value.trim()) {
-    status.textContent = "Type a query first.";
+    showStatus(status, "Type a query first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Normalizing -> embedding (bge-m3) -> vectorstore.search()...";
-  results.innerHTML = "";
+  showStatus(status, "Normalizing -> embedding (bge-m3) -> vectorstore.search()...", "loading");
+  document.getElementById("stage7StaleBadge").classList.remove("visible");
 
   const formData = new FormData();
   formData.append("query", queryInput.value.trim());
@@ -407,9 +779,11 @@ async function doStage7Search() {
 
     lastStage7 = { query: data.query, results: data.results };
     results.innerHTML = data.results.slice(0, 5).map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
-    status.textContent = `Normalized query: "${data.query}" - top 5 of ${data.results.length} matches shown`;
+    showStatus(status, `Normalized query: "${data.query}" - top 5 of ${data.results.length} matches shown`, "success");
+    updateStaleBadges();
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "embedding"), "error");
+    results.innerHTML = '<div class="empty-state">Search failed - see message above.</div>';
   } finally {
     btn.disabled = false;
   }
@@ -422,13 +796,13 @@ async function doStage8Search() {
   const results = document.getElementById("stage8Results");
 
   if (!queryInput.value.trim()) {
-    status.textContent = "Type a query first.";
+    showStatus(status, "Type a query first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Normalizing -> PostgreSQL full-text search...";
-  results.innerHTML = "";
+  showStatus(status, "Normalizing -> PostgreSQL full-text search...", "loading");
+  document.getElementById("stage8StaleBadge").classList.remove("visible");
 
   const formData = new FormData();
   formData.append("query", queryInput.value.trim());
@@ -442,15 +816,17 @@ async function doStage8Search() {
 
     if (data.error) {
       lastStage8 = { query: queryInput.value.trim(), results: [] };
-      status.textContent = data.error;
+      showStatus(status, data.error, "error");
       return;
     }
 
     lastStage8 = { query: data.query, results: data.results };
     results.innerHTML = data.results.slice(0, 5).map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
-    status.textContent = `Normalized query: "${data.query}" - top 5 of ${data.results.length} keyword matches shown`;
+    showStatus(status, `Normalized query: "${data.query}" - top 5 of ${data.results.length} keyword matches shown`, "success");
+    updateStaleBadges();
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "db"), "error");
+    results.innerHTML = '<div class="empty-state">Search failed - see message above.</div>';
   } finally {
     btn.disabled = false;
   }
@@ -463,12 +839,12 @@ async function doStage9Search() {
   const results = document.getElementById("stage9Results");
 
   if (!queryInput.value.trim()) {
-    status.textContent = "Type a query first.";
+    showStatus(status, "Type a query first.", "error");
     return;
   }
 
   btn.disabled = true;
-  results.innerHTML = "";
+  document.getElementById("stage9StaleBadge").classList.remove("visible");
 
   const query = queryInput.value.trim();
   const canReuse = lastStage7.query === query && lastStage8.query === query;
@@ -476,7 +852,7 @@ async function doStage9Search() {
   try {
     let data;
     if (canReuse) {
-      status.textContent = "Reusing Stage 7 + Stage 8's last results (same query) -> fusing (RRF)...";
+      showStatus(status, "Reusing Stage 7 + Stage 8's last results (same query) -> fusing (RRF)...", "loading");
       const formData = new FormData();
       formData.append("semantic_results", JSON.stringify(lastStage7.results));
       formData.append("keyword_results", JSON.stringify(lastStage8.results));
@@ -485,7 +861,7 @@ async function doStage9Search() {
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       data = await res.json();
     } else {
-      status.textContent = "Stage 7/8 not run for this exact query yet - fetching both, then fusing (RRF)...";
+      showStatus(status, "Stage 7/8 not run for this exact query yet - fetching both, then fusing (RRF)...", "loading");
       const formData = new FormData();
       formData.append("query", query);
       formData.append("top_k", "5");
@@ -495,16 +871,19 @@ async function doStage9Search() {
     }
 
     if (data.error) {
-      status.textContent = data.error;
+      showStatus(status, data.error, "error");
       return;
     }
 
     lastStage9Results = data.results;
+    lastStage9ResultsQuery = query;
     document.getElementById("stage10Banner").style.display = "none";
     results.innerHTML = data.results.map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
-    status.textContent = `${canReuse ? "Reused" : "Fetched"} - ${data.semantic_count} semantic + ${data.keyword_count} keyword candidates fused into top ${data.results.length}`;
+    showStatus(status, `${canReuse ? "Reused" : "Fetched"} - ${data.semantic_count} semantic + ${data.keyword_count} keyword candidates fused into top ${data.results.length}`, "success");
+    updateStaleBadges();
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "embedding"), "error");
+    results.innerHTML = '<div class="empty-state">Search failed - see message above.</div>';
   } finally {
     btn.disabled = false;
   }
@@ -517,13 +896,12 @@ async function doStage11Build() {
   const tokenBudget = document.getElementById("stage11TokenBudget").value;
 
   if (!lastStage9Results || lastStage9Results.length === 0) {
-    status.textContent = "Run Stage 9 first - nothing to build context from.";
+    showStatus(status, "Run Stage 9 first - nothing to build context from.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Deduplicating -> merging adjacent chunks -> restoring order -> applying token budget...";
-  results.innerHTML = "";
+  showStatus(status, "Deduplicating -> merging adjacent chunks -> restoring order -> applying token budget...", "loading");
 
   const formData = new FormData();
   formData.append("chunks", JSON.stringify(lastStage9Results));
@@ -535,15 +913,16 @@ async function doStage11Build() {
     const data = await res.json();
 
     if (data.error) {
-      status.textContent = data.error;
+      showStatus(status, data.error, "error");
       return;
     }
 
     lastStage11Blocks = data.blocks;
     results.innerHTML = data.blocks.map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
-    status.textContent = `${data.input_count} in -> ${data.after_dedup_count} after dedup -> ${data.after_merge_count} after merge -> ${data.final_count} kept (${data.total_tokens}/${data.token_budget} tokens, ${data.dropped.length} dropped for budget)`;
+    showStatus(status, `${data.input_count} in -> ${data.after_dedup_count} after dedup -> ${data.after_merge_count} after merge -> ${data.final_count} kept (${data.total_tokens}/${data.token_budget} tokens, ${data.dropped.length} dropped for budget)`, "success");
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "db"), "error");
+    results.innerHTML = '<div class="empty-state">Context build failed - see message above.</div>';
   } finally {
     btn.disabled = false;
   }
@@ -557,16 +936,16 @@ async function doStage12Answer() {
   const promptOut = document.getElementById("stage12PromptOut");
 
   if (!lastStage11Blocks || lastStage11Blocks.length === 0) {
-    status.textContent = "Run Stage 11 first - nothing to answer from.";
+    showStatus(status, "Run Stage 11 first - nothing to answer from.", "error");
     return;
   }
   if (!questionInput.value.trim()) {
-    status.textContent = "Type a question first.";
+    showStatus(status, "Type a question first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Building prompt -> calling qwen2.5:7b (this can take 10-30s)...";
+  showStatus(status, "Building prompt -> calling qwen2.5:7b (this can take 10-30s)...", "loading");
   answerBox.style.display = "none";
 
   const formData = new FormData();
@@ -579,16 +958,16 @@ async function doStage12Answer() {
     const data = await res.json();
 
     if (data.error) {
-      status.textContent = data.error;
+      showStatus(status, data.error, "error");
       return;
     }
 
     answerBox.style.display = "block";
     answerBox.textContent = data.answer;
     promptOut.textContent = data.prompt;
-    status.textContent = `Answered in ${data.elapsed_seconds}s using ${lastStage11Blocks.length} context block(s)`;
+    showStatus(status, `Answered in ${data.elapsed_seconds}s using ${lastStage11Blocks.length} context block(s)`, "success");
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "llm"), "error");
   } finally {
     btn.disabled = false;
   }
@@ -601,8 +980,8 @@ function doStage10Check() {
 
   if (!lastStage9Results || lastStage9Results.length === 0) {
     banner.style.display = "block";
-    banner.style.background = "#fed7d7";
-    banner.style.color = "#822727";
+    banner.style.background = "var(--danger-soft)";
+    banner.style.color = "var(--danger)";
     banner.textContent = "Run Stage 9 first - nothing to check yet.";
     return;
   }
@@ -617,13 +996,110 @@ function doStage10Check() {
 
   banner.style.display = "block";
   if (hasAnswer) {
-    banner.style.background = "#c6f6d5";
-    banner.style.color = "#22543d";
+    banner.style.background = "var(--success-soft)";
+    banner.style.color = "var(--success)";
     banner.textContent = `Answer found - top RRF score ${top.rrf_score}${simText} (RRF>=${rrfThreshold} or sim>=${similarityFloor}). ${passedCount} of ${totalCount} chunks passed.`;
   } else {
-    banner.style.background = "#fed7d7";
-    banner.style.color = "#822727";
+    banner.style.background = "var(--danger-soft)";
+    banner.style.color = "var(--danger)";
     banner.textContent = `No answer found - top RRF score ${top.rrf_score}${simText} (below both RRF>=${rrfThreshold} and sim>=${similarityFloor}). ${passedCount} of ${totalCount} chunks passed - results below this point should not be shown as relevant.`;
+  }
+}
+
+// Drives Stages 6-12 in sequence by calling the same functions the
+// individual stage buttons call - no separate code path, so there's
+// only one place that can drift from how each stage actually works.
+// Each stage's own state variable (set only on success) is checked
+// after awaiting it, since none of the stage functions throw upward -
+// they catch their own errors and show them in their own status line.
+async function runFullPipeline() {
+  const questionInput = document.getElementById("pipelineQuestion");
+  const runBtn = document.getElementById("runPipelineBtn");
+  const progress = document.getElementById("pipelineProgress");
+  const progressLabel = document.getElementById("pipelineProgressLabel");
+  const question = questionInput.value.trim();
+
+  if (!question) {
+    showStatus(progressLabel, "Type a question above first.", "error");
+    progress.style.display = "flex";
+    return;
+  }
+
+  runBtn.disabled = true;
+  progress.style.display = "flex";
+  const dots = {};
+  progress.querySelectorAll(".step-dot").forEach(d => {
+    d.classList.remove("done", "active", "error");
+    dots[d.dataset.stage] = d;
+  });
+
+  const setActive = (n, label) => {
+    dots[n].classList.add("active");
+    progressLabel.textContent = label;
+  };
+  const setDone = (n) => { dots[n].classList.remove("active"); dots[n].classList.add("done"); };
+  const setError = (n, label) => {
+    dots[n].classList.remove("active"); dots[n].classList.add("error");
+    progressLabel.textContent = label;
+  };
+
+  try {
+    // Stage 6
+    setActive("6", "Normalizing query...");
+    document.getElementById("rawQuery").value = question;
+    await doNormalize();
+    if (!currentNormalizedQuery) { setError("6", "Normalization failed - see Stage 6 card below."); return; }
+    setDone("6");
+
+    // Stage 7
+    setActive("7", "Semantic search...");
+    await doStage7Search();
+    if (lastStage7.query !== currentNormalizedQuery) { setError("7", "Semantic search failed - see Stage 7 card below."); return; }
+    setDone("7");
+
+    // Stage 8
+    setActive("8", "Keyword search...");
+    await doStage8Search();
+    if (lastStage8.query !== currentNormalizedQuery) { setError("8", "Keyword search failed - see Stage 8 card below."); return; }
+    setDone("8");
+
+    // Stage 9
+    setActive("9", "Fusing results (RRF)...");
+    await doStage9Search();
+    if (!lastStage9Results || lastStage9ResultsQuery !== currentNormalizedQuery) { setError("9", "Fusion failed - see Stage 9 card below."); return; }
+    setDone("9");
+
+    // Stage 10
+    setActive("10", "Checking for a valid answer...");
+    doStage10Check();
+    const rrfThreshold = parseFloat(document.getElementById("stage10RrfThreshold").value);
+    const similarityFloor = parseFloat(document.getElementById("stage10SimilarityFloor").value);
+    const top = lastStage9Results[0];
+    const hasAnswer = top.rrf_score >= rrfThreshold || (top.similarity ?? 0) >= similarityFloor;
+    if (!hasAnswer) {
+      setError("10", "No answer found in the stored documents for this question - stopping here (see Stage 10 banner below).");
+      return;
+    }
+    setDone("10");
+
+    // Stage 11
+    setActive("11", "Building context...");
+    await doStage11Build();
+    if (!lastStage11Blocks || lastStage11Blocks.length === 0) { setError("11", "Context build failed - see Stage 11 card below."); return; }
+    setDone("11");
+
+    // Stage 12
+    setActive("12", "Generating answer (10-30s)...");
+    document.getElementById("stage12Question").value = currentNormalizedQuery;
+    await doStage12Answer();
+    const answerBox = document.getElementById("stage12AnswerBox");
+    if (answerBox.style.display === "none") { setError("12", "Answer generation failed - see Stage 12 card below."); return; }
+    setDone("12");
+
+    progressLabel.textContent = "Done - scroll down to see the full trail, or read the answer in Stage 12.";
+    document.getElementById("stage12AnswerBox").scrollIntoView({ behavior: "smooth", block: "center" });
+  } finally {
+    runBtn.disabled = false;
   }
 }
 
@@ -644,12 +1120,12 @@ async function convert() {
   const status = document.getElementById("status");
 
   if (!fileInput.files.length) {
-    status.textContent = "Pick a PDF first.";
+    showStatus(status, "Pick a PDF first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Converting (Docling layout-aware parse)...";
+  showStatus(status, "Converting (Docling layout-aware parse)...", "loading");
   document.getElementById("mdOut").textContent = "";
   document.getElementById("mdRendered").innerHTML = "";
 
@@ -663,10 +1139,10 @@ async function convert() {
 
     document.getElementById("mdOut").textContent = data.markdown;
     document.getElementById("mdRendered").innerHTML = renderMarkdown(data.markdown);
-    status.textContent = `Done: converted in ${data.elapsed_seconds}s (job ${data.job_id})`;
+    showStatus(status, `Done: converted in ${data.elapsed_seconds}s (job ${data.job_id})`, "success");
     document.getElementById("chunkBtn").disabled = false;
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "parse"), "error");
   } finally {
     btn.disabled = false;
   }
@@ -717,8 +1193,8 @@ function chunkCardHtml(c, embedStatus, storeStatus) {
         <div><b>source:</b> ${escapeHtml(c.source_file)}</div>
         <div><b>page:</b> ${c.page_number ? c.page_number.join(", ") : "?"} &nbsp; <b>index:</b> ${c.chunk_index}</div>
       </div>
-      ${c.rrf_formula ? `<div class="chunk-meta" style="background:#f3e8ff; padding:4px 8px; border-radius:4px;"><b>RRF calc:</b> ${escapeHtml(c.rrf_formula)} <span style="color:#888">(${escapeHtml(c.rrf_sources)})</span></div>` : ''}
-      ${c.merged_from && c.merged_from.length > 1 ? `<div class="chunk-meta" style="background:#e6fffa; padding:4px 8px; border-radius:4px;"><b>Merged:</b> chunks ${c.merged_from.join(", ")} combined (adjacent in source document)</div>` : ''}
+      ${c.rrf_formula ? `<div class="calc-box"><b>RRF calc:</b> ${escapeHtml(c.rrf_formula)} <span style="opacity:0.7">(${escapeHtml(c.rrf_sources)})</span></div>` : ''}
+      ${c.merged_from && c.merged_from.length > 1 ? `<div class="merge-box"><b>Merged:</b> chunks ${c.merged_from.join(", ")} combined (adjacent in source document)</div>` : ''}
       <div class="chunk-heading-path"><b>section:</b> ${escapeHtml(c.section_heading || "(no heading)")}</div>
       <div class="chunk-text">${renderChunkText(c.text, c.content_type, c.overlap_text)}</div>
     </div>
@@ -733,12 +1209,12 @@ async function doChunk() {
   const grid = document.getElementById("chunkGrid");
 
   if (!fileInput.files.length) {
-    status.textContent = "Pick a PDF first.";
+    showStatus(status, "Pick a PDF first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Chunking (Docling parse + header-aware split)...";
+  showStatus(status, "Chunking (Docling parse + header-aware split)...", "loading");
   section.style.display = "none";
   document.getElementById("embedBtn").disabled = true;
   document.getElementById("storeBtn").disabled = true;
@@ -762,9 +1238,9 @@ async function doChunk() {
 
     section.style.display = "block";
     document.getElementById("embedBtn").disabled = false;
-    status.textContent = `Chunked: ${data.chunk_count} chunks (job ${data.job_id})`;
+    showStatus(status, `Chunked: ${data.chunk_count} chunks (job ${data.job_id})`, "success");
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "parse"), "error");
   } finally {
     btn.disabled = false;
   }
@@ -775,12 +1251,12 @@ async function doEmbed() {
   const status = document.getElementById("status");
 
   if (!currentJobId) {
-    status.textContent = "Run Chunk first.";
+    showStatus(status, "Run Chunk first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Embedding chunks (bge-m3)... (not stored yet - click Store next)";
+  showStatus(status, "Embedding chunks (bge-m3)... (not stored yet - click Store next)", "loading");
   document.getElementById("storeBtn").disabled = true;
   document.getElementById("searchSection").style.display = "none";
 
@@ -807,9 +1283,9 @@ async function doEmbed() {
     if (data.embedded_count > 0) {
       document.getElementById("storeBtn").disabled = false;
     }
-    status.textContent = `Embedded (not stored): ${data.embedded_count}/${data.embedded_count + data.failed_count} chunks (job ${data.job_id})`;
+    showStatus(status, `Embedded (not stored): ${data.embedded_count}/${data.embedded_count + data.failed_count} chunks (job ${data.job_id})`, "success");
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "embedding"), "error");
   } finally {
     btn.disabled = false;
   }
@@ -820,12 +1296,12 @@ async function doStore() {
   const status = document.getElementById("status");
 
   if (!currentJobId) {
-    status.textContent = "Run Chunk and Embed first.";
+    showStatus(status, "Run Chunk and Embed first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Storing embeddings in Postgres/pgvector...";
+  showStatus(status, "Storing embeddings in Postgres/pgvector...", "loading");
 
   const formData = new FormData();
   formData.append("job_id", currentJobId);
@@ -850,10 +1326,10 @@ async function doStore() {
     if (data.stored_count > 0) {
       document.getElementById("searchSection").style.display = "block";
     }
-    status.textContent = `Stored in Postgres: ${data.stored_count}/${data.stored_count + data.failed_count} chunks (job ${data.job_id})`;
+    showStatus(status, `Stored in Postgres: ${data.stored_count}/${data.stored_count + data.failed_count} chunks (job ${data.job_id})`, "success");
     loadDocuments();
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "db"), "error");
   } finally {
     btn.disabled = false;
   }
@@ -866,16 +1342,16 @@ async function doSearch() {
   const results = document.getElementById("searchResults");
 
   if (!currentJobId) {
-    status.textContent = "Run Chunk first.";
+    showStatus(status, "Run Chunk first.", "error");
     return;
   }
   if (!queryInput.value.trim()) {
-    status.textContent = "Type a query first.";
+    showStatus(status, "Type a query first.", "error");
     return;
   }
 
   btn.disabled = true;
-  status.textContent = "Searching (embedding query + cosine similarity)...";
+  showStatus(status, "Searching (embedding query + cosine similarity)...", "loading");
   results.innerHTML = "";
 
   const formData = new FormData();
@@ -891,9 +1367,10 @@ async function doSearch() {
     if (data.error) throw new Error(data.error);
 
     results.innerHTML = data.results.map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
-    status.textContent = `Search done: top ${data.results.length} matches for "${data.query}"`;
+    showStatus(status, `Search done: top ${data.results.length} matches for "${data.query}"`, "success");
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "embedding"), "error");
+    results.innerHTML = '<div class="empty-state">Search failed - see message above.</div>';
   } finally {
     btn.disabled = false;
   }
@@ -991,7 +1468,7 @@ async function doEvalRun() {
   const progressFill = document.getElementById("evalProgressFill");
 
   if (!select.value) {
-    status.textContent = "No eval set selected.";
+    showStatus(status, "No eval set selected.", "error");
     return;
   }
 
@@ -999,7 +1476,7 @@ async function doEvalRun() {
   select.disabled = true;
   document.getElementById("evalSummarySection").style.display = "none";
   document.getElementById("evalResultsSection").style.display = "none";
-  status.textContent = "Starting eval run...";
+  showStatus(status, "Starting eval run...", "loading");
   progressBar.style.display = "block";
   progressFill.style.width = "0%";
 
@@ -1010,14 +1487,14 @@ async function doEvalRun() {
     const res = await fetch("/eval/run", { method: "POST", body: formData });
     const data = await res.json();
     if (data.error) {
-      status.textContent = data.error;
+      showStatus(status, data.error, "error");
       btn.disabled = false;
       select.disabled = false;
       return;
     }
     pollEvalStatus(data.job_id, data.total);
   } catch (err) {
-    status.textContent = "Error: " + err.message;
+    showStatus(status, friendlyError(err, "eval"), "error");
     btn.disabled = false;
     select.disabled = false;
   }
@@ -1038,11 +1515,11 @@ function pollEvalStatus(jobId, total) {
 
       const pct = total > 0 ? Math.round((data.completed / total) * 100) : 0;
       progressFill.style.width = pct + "%";
-      status.textContent = `Running: ${data.completed}/${data.total} questions completed...`;
+      showStatus(status, `Running: ${data.completed}/${data.total} questions completed...`, "loading");
 
       if (data.status === "done") {
         clearInterval(evalPollTimer);
-        status.textContent = `Done: ${data.total} questions in ${data.elapsed_seconds}s`;
+        showStatus(status, `Done: ${data.total} questions in ${data.elapsed_seconds}s`, "success");
         renderEvalSummary(data.summary);
         renderEvalResults(data.results);
         btn.disabled = false;
@@ -1050,7 +1527,7 @@ function pollEvalStatus(jobId, total) {
       }
     } catch (err) {
       clearInterval(evalPollTimer);
-      status.textContent = "Error polling eval status: " + err.message;
+      showStatus(status, friendlyError(err, "eval"), "error");
       btn.disabled = false;
       select.disabled = false;
     }
@@ -1061,12 +1538,32 @@ function renderEvalSummary(summary) {
   const box = document.getElementById("evalSummaryBox");
   const pct = (passed, checked) => checked > 0 ? Math.round((passed / checked) * 100) : 0;
 
-  box.innerHTML = `
-    <div><b>Retrieval:</b> ${summary.retrieval.passed}/${summary.retrieval.checked} passed (${pct(summary.retrieval.passed, summary.retrieval.checked)}%)</div>
-    <div><b>No-answer detection:</b> ${summary.no_answer_detection.passed}/${summary.no_answer_detection.checked} passed (${pct(summary.no_answer_detection.passed, summary.no_answer_detection.checked)}%)</div>
-    <div><b>Answer quality:</b> ${summary.answer_quality.passed}/${summary.answer_quality.checked} passed (${pct(summary.answer_quality.passed, summary.answer_quality.checked)}%)</div>
-    <div style="margin-top:8px; color:${summary.errors > 0 ? '#822727' : '#888'}"><b>Errors:</b> ${summary.errors}/${summary.total}</div>
-  `;
+  const statCard = (label, passed, checked) => {
+    const p = pct(passed, checked);
+    const cls = checked === 0 ? "" : (p >= 80 ? "good" : "bad");
+    const barCls = checked === 0 ? "" : (p >= 80 ? "" : "bad");
+    return `
+      <div class="stat-card">
+        <div class="stat-label">${label}</div>
+        <div class="stat-value ${cls}">${p}%</div>
+        <div class="stat-sub">${passed}/${checked} passed</div>
+        <div class="stat-bar"><div class="stat-bar-fill ${barCls}" style="width:${p}%"></div></div>
+      </div>`;
+  };
+
+  const errorCard = `
+    <div class="stat-card">
+      <div class="stat-label">Errors</div>
+      <div class="stat-value ${summary.errors > 0 ? 'bad' : 'good'}">${summary.errors}</div>
+      <div class="stat-sub">of ${summary.total} questions</div>
+    </div>`;
+
+  box.innerHTML =
+    statCard("Retrieval", summary.retrieval.passed, summary.retrieval.checked) +
+    statCard("No-Answer Detection", summary.no_answer_detection.passed, summary.no_answer_detection.checked) +
+    statCard("Answer Quality", summary.answer_quality.passed, summary.answer_quality.checked) +
+    errorCard;
+
   document.getElementById("evalSummarySection").style.display = "block";
 }
 
@@ -1093,7 +1590,7 @@ function renderEvalResults(results) {
       ${r.error ? `<b>Error:</b> ${escapeHtml(r.error)}` : `
         <div><b>Top section:</b> ${escapeHtml(r.top_section || "(none)")}</div>
         <div style="margin-top:6px"><b>Answer:</b> ${r.answer ? escapeHtml(r.answer) : "(no answer generated - has_answer was false)"}</div>
-        ${r.elapsed_llm_seconds ? `<div style="margin-top:6px; color:#888; font-size:12px;">LLM time: ${r.elapsed_llm_seconds}s</div>` : ''}
+        ${r.elapsed_llm_seconds ? `<div style="margin-top:6px; color:var(--ink-faint); font-size:13px; font-family:var(--mono);">LLM time: ${r.elapsed_llm_seconds}s</div>` : ''}
       `}
     </div>
   `).join("");
@@ -1110,5 +1607,6 @@ loadDocuments();
 restoreLastTab();
 </script>
 
+</div>
 </body>
 </html>

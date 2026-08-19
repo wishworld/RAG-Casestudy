@@ -1,5 +1,10 @@
 # App Run Checklist
 
+Quick "is everything running right now" health check, for a machine
+that's already fully set up. For first-time setup from zero (installs,
+schema creation, dependency versions), see [SETUP.md](../SETUP.md) at
+the repo root instead.
+
 Everything that must be active for the RAG app to work end to end.
 Check in this order - each step depends on the one above it.
 
