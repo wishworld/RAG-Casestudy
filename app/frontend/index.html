@@ -131,6 +131,57 @@
   }
   .stale-badge.visible { display: flex; }
 
+  /* Learn tab - concept explanations */
+  .concept-flow {
+    display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding: 4px 2px 12px;
+    margin: 16px 0;
+  }
+  .concept-flow-step {
+    flex: 1; min-width: 130px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 12px; text-align: center;
+  }
+  .concept-flow-step .flow-icon { font-size: 20px; margin-bottom: 6px; }
+  .concept-flow-step .flow-title { font-size: 13.5px; font-weight: 700; font-family: var(--serif); margin-bottom: 4px; }
+  .concept-flow-step .flow-desc { font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; }
+  .concept-flow-arrow {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+    width: 28px; color: var(--ink-faint); font-family: var(--mono); font-size: 15px;
+  }
+
+  .concept-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 16px 18px; margin-bottom: 12px;
+  }
+  .concept-card .concept-label {
+    display: inline-block; font-size: 10.5px; font-family: var(--mono); font-weight: 700;
+    color: var(--accent); background: var(--accent-soft); padding: 3px 10px; border-radius: 20px;
+    letter-spacing: 0.03em; margin-bottom: 10px;
+  }
+  .concept-card h3 { font-family: var(--serif); font-size: 16px; font-weight: 600; margin: 0 0 8px; }
+  .concept-card p { font-size: 13.5px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 8px; }
+  .concept-card p:last-child { margin-bottom: 0; }
+  .concept-card .concept-analogy {
+    font-size: 13px; color: var(--ink); background: var(--surface-alt); border-left: 3px solid var(--accent);
+    padding: 10px 14px; border-radius: 4px; font-style: italic; margin-top: 10px;
+  }
+
+  .stage-map-row {
+    display: grid; grid-template-columns: 90px 1fr 1fr; gap: 14px; align-items: start;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .stage-map-row:last-child { border-bottom: none; }
+  .stage-map-row .stage-map-badge {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); padding: 4px 10px; border-radius: 20px; text-align: center; width: fit-content;
+  }
+  .stage-map-row .stage-map-name { font-size: 13.5px; font-weight: 600; font-family: var(--serif); }
+  .stage-map-row .stage-map-concept { font-size: 12.5px; color: var(--ink-soft); line-height: 1.6; }
+  .stage-map-header {
+    display: grid; grid-template-columns: 90px 1fr 1fr; gap: 14px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
+    color: var(--ink-faint); font-family: var(--mono); padding-bottom: 8px; border-bottom: 1px solid var(--border-strong);
+  }
+
   .pipeline-progress {
     display: flex; align-items: center; gap: 6px; margin-bottom: 20px; flex-wrap: wrap;
     padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
@@ -323,18 +374,19 @@
   <button class="tab-btn active" id="tab-btn-input" onclick="switchTab('input')">Input</button>
   <button class="tab-btn" id="tab-btn-query" onclick="switchTab('query')">Query</button>
   <button class="tab-btn" id="tab-btn-eval" onclick="switchTab('eval')">RAG Eval</button>
+  <button class="tab-btn" id="tab-btn-learn" onclick="switchTab('learn')">Learn RAG</button>
 </div>
 
 <div class="status" id="status"></div>
 
 <div class="tab-panel active" id="tab-panel-input">
 
-  <h1>PDF -> Markdown <span style="color:var(--ink-faint); font-weight:600;">(Stage 1)</span></h1>
-  <div class="sub">Local pipeline: Docling layout-aware parser (headings/tables from real PDF structure)</div>
+  <h1>Document Input <span style="color:var(--ink-faint); font-weight:600;">(Stages 1-4)</span></h1>
+  <div class="sub">Upload a PDF and index it for search: parse to Markdown, split into chunks, embed, and store in pgvector. Do this once per document.</div>
 
   <div class="upload-row">
     <input type="file" id="pdfFile" accept="application/pdf" onchange="resetForNewFile()">
-    <button id="convertBtn" onclick="convert()">Convert</button>
+    <button id="convertBtn" onclick="convert()">Convert <span style="opacity:0.75; font-weight:500;">- Stage 1</span></button>
   </div>
 
   <div class="panes">
@@ -361,8 +413,8 @@
   </div>
 
   <div class="search-section" id="searchSection" style="display:none">
-    <h2>Search <span style="color:var(--ink-faint); font-weight:600; font-size:14px;">(Stage 5: query the pgvector store)</span></h2>
-    <div class="chunks-sub">Query is embedded (bge-m3) and matched against chunks stored in Postgres/pgvector via SQL cosine similarity - persists across server restarts.</div>
+    <h2>Quick Test Search <span style="color:var(--ink-faint); font-weight:600; font-size:14px;">(this document only)</span></h2>
+    <div class="chunks-sub">A fast sanity check that this document stored correctly - searches only the file you just uploaded. For the full retrieval pipeline (searching everything you've stored, with hybrid fusion and citations), use the Query tab instead.</div>
     <div class="upload-row">
       <input type="text" id="searchQuery" placeholder="e.g. How much can DSM claim monthly?" style="flex:1;">
       <button id="searchBtn" onclick="doSearch()">Search</button>
@@ -381,12 +433,12 @@
 
 <div class="tab-panel" id="tab-panel-query">
 
-  <h1>Query Pipeline</h1>
-  <div class="sub">Every stage below is independently triggerable and inspectable - nothing auto-chains unless you use Run Full Pipeline. Run top to bottom, or jump straight to a stage once its input is filled in.</div>
+  <h1>Query Pipeline <span style="color:var(--ink-faint); font-weight:600;">(Stages 6-12)</span></h1>
+  <div class="sub">Ask a question and watch it move through retrieval to a grounded answer. Every stage below is independently triggerable and inspectable - nothing auto-chains unless you use Run Full Pipeline.</div>
 
   <div class="step-card" style="margin-top:0;">
     <div class="upload-row" style="margin-bottom:0;">
-      <input type="text" id="pipelineQuestion" placeholder="Type a question, e.g. What is the fiscal deficit target for 2026-27?" style="flex:1;">
+      <input type="text" id="pipelineQuestion" placeholder="Type a question about one of your uploaded documents" style="flex:1;">
       <button id="runPipelineBtn" onclick="runFullPipeline()">Run Full Pipeline &#9654;</button>
     </div>
     <div class="chunks-sub" style="margin:10px 0 0;">Runs Stages 6 -&gt; 7 -&gt; 8 -&gt; 9 -&gt; 10 -&gt; 11 -&gt; 12 in sequence. Individual stage cards below still work independently for debugging.</div>
@@ -437,7 +489,7 @@
     </div>
     <div class="stale-badge" id="stage7StaleBadge">&#9888; Results are from a different query - re-run to refresh</div>
     <div class="upload-row">
-      <input type="text" id="stage7Query" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
+      <input type="text" id="stage7Query" placeholder="Auto-fills from Stage 6, or type a query to search by meaning" style="flex:1;">
       <button id="stage7SearchBtn" onclick="doStage7Search()">Search</button>
     </div>
     <div class="chunks-sub" id="stage7Status"></div>
@@ -454,7 +506,7 @@
     </div>
     <div class="stale-badge" id="stage8StaleBadge">&#9888; Results are from a different query - re-run to refresh</div>
     <div class="upload-row">
-      <input type="text" id="stage8Query" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
+      <input type="text" id="stage8Query" placeholder="Auto-fills from Stage 6, or type exact terms/codes to search for" style="flex:1;">
       <button id="stage8SearchBtn" onclick="doStage8Search()">Search</button>
     </div>
     <div class="chunks-sub" id="stage8Status"></div>
@@ -471,7 +523,7 @@
     </div>
     <div class="stale-badge" id="stage9StaleBadge">&#9888; Results are from a different query - re-run to refresh</div>
     <div class="upload-row">
-      <input type="text" id="stage9Query" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
+      <input type="text" id="stage9Query" placeholder="Auto-fills from Stage 6, or type a query to fuse both searches" style="flex:1;">
       <button id="stage9SearchBtn" onclick="doStage9Search()">Search</button>
     </div>
     <div class="chunks-sub" id="stage9Status"></div>
@@ -522,7 +574,7 @@
       </div>
     </div>
     <div class="upload-row">
-      <input type="text" id="stage12Question" placeholder="Run Normalize above first, or type directly here" style="flex:1;">
+      <input type="text" id="stage12Question" placeholder="Auto-fills from Stage 6 - this is the question the LLM will answer" style="flex:1;">
       <button id="stage12AnswerBtn" onclick="doStage12Answer()">Generate Answer</button>
     </div>
     <div class="chunks-sub" id="stage12Status"></div>
@@ -538,14 +590,14 @@
 <div class="tab-panel" id="tab-panel-eval">
 
   <h1>RAG Evaluation <span style="color:var(--ink-faint); font-weight:600;">(Stage 13)</span></h1>
-  <div class="sub">Runs a batch of questions through the FULL pipeline (Stages 6-12, including the LLM) and scores retrieval, no-answer detection, and answer quality automatically - instead of eyeballing results one at a time.</div>
+  <div class="sub">Run a batch of known questions through the full pipeline and score retrieval, no-answer detection, and answer quality automatically - instead of eyeballing results one at a time.</div>
 
   <div class="step-card">
     <div class="step-card-head">
       <div class="step-num">13</div>
       <div class="step-card-titles">
         <h2>Run an eval set</h2>
-        <div class="chunks-sub">Each question runs through: normalize -&gt; semantic+keyword search -&gt; RRF fusion -&gt; no-answer check -&gt; context build -&gt; LLM answer. A full run can take many minutes - progress updates live below.</div>
+        <div class="chunks-sub">Each question runs through: normalize -&gt; semantic+keyword search -&gt; RRF fusion -&gt; no-answer detection -&gt; context build -&gt; LLM answer. A full run can take many minutes - progress updates live below.</div>
       </div>
     </div>
     <div class="upload-row">
@@ -571,6 +623,282 @@
     <h2>Per-question results</h2>
     <div class="chunks-sub">PASS/FAIL per check. Click a row to see the full generated answer.</div>
     <div id="evalResultsTable"></div>
+  </div>
+
+</div>
+
+<div class="tab-panel" id="tab-panel-learn">
+
+  <h1>Learn RAG <span style="color:var(--ink-faint); font-weight:600;">(concepts)</span></h1>
+  <div class="sub">A plain-English walkthrough of Retrieval-Augmented Generation, using the exact stages you can click through in the Input, Query, and RAG Eval tabs as live, inspectable examples.</div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-card-titles">
+        <h2>The problem RAG solves</h2>
+      </div>
+    </div>
+    <p style="font-size:14px; color:var(--ink-soft); line-height:1.75; margin:0 0 12px;">
+      A large language model (like qwen2.5:7b, used in Stage 12) only knows what it learned during
+      training - it has never seen your PDF. Ask it a question about your document directly and it will
+      either say it doesn't know, or worse, confidently make something up (a "hallucination").
+    </p>
+    <p style="font-size:14px; color:var(--ink-soft); line-height:1.75; margin:0;">
+      <b style="color:var(--ink);">RAG's fix:</b> before asking the LLM to answer, first <i>retrieve</i>
+      the specific pieces of your document that are actually relevant to the question, then hand those
+      pieces to the LLM as reference material and say "answer using only this." The LLM stops relying on
+      memory and starts reading - closer to an open-book exam than a pop quiz.
+    </p>
+    <div class="concept-analogy">
+      Analogy: a brilliant new employee who has never read your company's documents. RAG is the act of
+      handing them exactly the right three pages before they answer your question, instead of asking them
+      to answer from memory.
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-card-titles">
+        <h2>The two-phase shape of every RAG system</h2>
+        <div class="chunks-sub">This app makes both phases visible as separate tabs - most production RAG tools hide this split entirely.</div>
+      </div>
+    </div>
+    <div class="concept-flow">
+      <div class="concept-flow-step" style="border-left:3px solid var(--accent);">
+        <div class="flow-icon">&#128196;</div>
+        <div class="flow-title">Indexing phase</div>
+        <div class="flow-desc">Runs ONCE per document, ahead of time. Turns a PDF into searchable pieces sitting in a database. Nothing about the user's question happens here.</div>
+      </div>
+      <div class="concept-flow-arrow">=&gt;</div>
+      <div class="concept-flow-step" style="border-left:3px solid var(--warning-text);">
+        <div class="flow-icon">&#128269;</div>
+        <div class="flow-title">Query phase</div>
+        <div class="flow-desc">Runs EVERY TIME a user asks a question. Searches the already-indexed pieces, then generates a grounded answer.</div>
+      </div>
+    </div>
+    <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.7; margin:4px 0 0;">
+      In this app: the <b style="color:var(--ink);">Input tab</b> is the indexing phase (Stages 1-4 -
+      you do this once per document). The <b style="color:var(--ink);">Query tab</b> is the query phase
+      (Stages 6-12 - you do this every time you ask a new question). The split matters because indexing
+      is slow and expensive (parsing, embedding) but only needs to happen once, while querying needs to
+      be fast since a real user is waiting on it.
+    </p>
+  </div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-card-titles">
+        <h2>Indexing phase - turning a document into something searchable</h2>
+      </div>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 1-2 &middot; Input tab</span>
+      <h3>Parse, then chunk</h3>
+      <p>A PDF is not naturally searchable - it's a flat blob of text and layout. Docling first converts
+      it to structured Markdown that preserves headings, tables, and reading order (Stage 1). Then the
+      chunker splits that into small pieces of a few hundred words each, called "chunks" (Stage 2) -
+      never the whole document at once.</p>
+      <div class="concept-analogy">Why not just search the whole document? Because later, the LLM can only
+      read a limited amount of text at once (its "context window"), and because a shorter, focused chunk
+      is easier to match precisely against a question than an entire 50-page document.</div>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 3 &middot; Input tab</span>
+      <h3>Embed - turning text into numbers</h3>
+      <p>An embedding model (bge-m3) reads each chunk and outputs a list of 1024 numbers - a "vector" -
+      that represents the chunk's <i>meaning</i>, not its exact words. Chunks about similar topics end up
+      with similar numbers, even if they don't share any of the same words.</p>
+      <div class="concept-analogy">Analogy: imagine plotting every sentence you've ever read as a dot on a
+      map, where dots close together mean similar meaning. "The car is fast" and "the vehicle is quick"
+      would land near each other, even though they share almost no words.</div>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 4 &middot; Input tab</span>
+      <h3>Store - saving it for later</h3>
+      <p>Every chunk's text and its vector get saved into Postgres (using the pgvector extension, which
+      knows how to store and search vectors efficiently). This is what makes indexing a one-time cost -
+      once stored, you can search this document as many times as you want without re-parsing or
+      re-embedding it.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-card-titles">
+        <h2>Query phase - answering a real question</h2>
+      </div>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 6 &middot; Query tab</span>
+      <h3>Normalize the question</h3>
+      <p>Before searching, the raw question gets lightly cleaned up - extra whitespace collapsed, invisible
+      characters stripped. Small, but it stops "  AEPS   error 91 " and "AEPS error 91" from being treated
+      as two different questions later in the pipeline.</p>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 7 &middot; Query tab</span>
+      <h3>Semantic search - the core of "retrieval"</h3>
+      <p>The question itself gets embedded with the same bge-m3 model used during indexing, turning it into
+      a vector too. Then pgvector finds the stored chunks whose vectors are closest to the question's
+      vector - "closest" measured by cosine similarity. This is retrieval finding meaning-based matches,
+      not keyword matches.</p>
+      <div class="concept-analogy">This is the step that lets "how much can I borrow" match a chunk that
+      says "maximum loan eligibility" - no shared words, but close in meaning.</div>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 8 &middot; Query tab</span>
+      <h3>Keyword search - semantic search's blind spot</h3>
+      <p>Semantic search is weak at exact terms: product codes, error numbers, specific names. PostgreSQL's
+      full-text search (Stage 8) does old-fashioned lexical matching instead - no meaning involved, just
+      "does this exact word appear." The two methods cover each other's weaknesses.</p>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 9 &middot; Query tab</span>
+      <h3>Hybrid search - combining both rankings</h3>
+      <p>Semantic search and keyword search produce two different ranked lists, scored on scales that
+      can't be compared directly. Reciprocal Rank Fusion (RRF) combines them by rank position instead of
+      raw score - a chunk that shows up near the top of <i>either</i> list gets boosted, and a chunk that
+      ranks well in <i>both</i> gets boosted even more. This is what "hybrid search" means in most
+      production RAG systems.</p>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 10 &middot; Query tab</span>
+      <h3>No-answer detection - knowing when to say "I don't know"</h3>
+      <p>Retrieval always returns <i>something</i> - even for a question with no real answer in the
+      document, the search still returns its "closest" matches, which may just be noise. Stage 10 checks
+      whether those top matches are actually good enough to trust before letting the LLM try to answer
+      from them. This is what stops the app from confidently answering an out-of-scope question.</p>
+      <div class="concept-analogy">This app's build hit a real bug here worth knowing about: scoring only
+      by RRF rank couldn't tell "a real answer found by just one search method" apart from "garbage found
+      by neither" - both scored identically. The fix added a second, independent check (raw similarity)
+      as a backup signal. Retrieval quality checks like this are a core, easy-to-underestimate part of
+      building RAG for real.</div>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 11 &middot; Query tab</span>
+      <h3>Context construction - preparing evidence for the LLM</h3>
+      <p>The surviving chunks get cleaned up before handing them to the LLM: duplicates removed, chunks
+      that are next to each other in the source document merged into one coherent block, put back into
+      reading order (not search-rank order), trimmed to fit a token budget, and tagged with citation
+      markers like [S1], [S2] so the answer can point back to its sources.</p>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 12 &middot; Query tab</span>
+      <h3>Generation - the "G" in RAG</h3>
+      <p>Only now does the LLM (qwen2.5:7b) get involved. It receives the original question plus the
+      prepared context blocks, with explicit instructions to answer only from what's provided and to cite
+      sources. This is the one step people usually mean when they say "AI answers a question" - but as
+      you can see, it's the last of seven steps, not the whole system.</p>
+    </div>
+
+    <div class="concept-card">
+      <span class="concept-label">Stage 13 &middot; RAG Eval tab</span>
+      <h3>Evaluation - proving it actually works</h3>
+      <p>A single good-looking answer doesn't prove a RAG pipeline is reliable. Stage 13 runs a whole set
+      of known questions with known-correct expectations through the full pipeline automatically, scoring
+      retrieval accuracy, no-answer detection, and answer quality separately - because a wrong answer
+      could mean retrieval found the wrong chunk, or it could mean the LLM misread the right chunk. Without
+      separating those, you can't tell which part of the system to fix.</p>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-card-titles">
+        <h2>Stage-by-stage map</h2>
+        <div class="chunks-sub">Quick reference - which tab and stage teaches which RAG concept.</div>
+      </div>
+    </div>
+    <div class="stage-map-header">
+      <div>Stage</div><div>What it does</div><div>Concept it teaches</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">1-2</div>
+      <div class="stage-map-name">Parse + Chunk</div>
+      <div class="stage-map-concept">Documents must be broken into small, structured pieces before they're searchable.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">3</div>
+      <div class="stage-map-name">Embed</div>
+      <div class="stage-map-concept">Meaning can be represented as numbers (vectors) that capture semantics, not just words.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">4</div>
+      <div class="stage-map-name">Store</div>
+      <div class="stage-map-concept">Indexing is a one-time cost, separate from answering any specific question.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">6</div>
+      <div class="stage-map-name">Normalize</div>
+      <div class="stage-map-concept">Clean input prevents silent mismatches later in the pipeline.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">7</div>
+      <div class="stage-map-name">Semantic search</div>
+      <div class="stage-map-concept">"Retrieval" means finding by meaning, not exact text.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">8</div>
+      <div class="stage-map-name">Keyword search</div>
+      <div class="stage-map-concept">Semantic search alone misses exact terms - lexical matching is still needed.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">9</div>
+      <div class="stage-map-name">Hybrid fusion (RRF)</div>
+      <div class="stage-map-concept">Combining multiple imperfect rankers beats trusting either one alone.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">10</div>
+      <div class="stage-map-name">No-answer detection</div>
+      <div class="stage-map-concept">A trustworthy system must be able to say "I don't know."</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">11</div>
+      <div class="stage-map-name">Context construction</div>
+      <div class="stage-map-concept">Raw search results need cleanup before an LLM can use them well.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">12</div>
+      <div class="stage-map-name">Generation</div>
+      <div class="stage-map-concept">The LLM's job shrinks to reading and summarizing evidence, not recalling facts from memory.</div>
+    </div>
+    <div class="stage-map-row">
+      <div class="stage-map-badge">13</div>
+      <div class="stage-map-name">Evaluation</div>
+      <div class="stage-map-concept">"It worked once" is not the same as "it works reliably" - measure both retrieval and generation separately.</div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-card-head">
+      <div class="step-card-titles">
+        <h2>How this app helps you actually learn RAG, not just use it</h2>
+      </div>
+    </div>
+    <p style="font-size:14px; color:var(--ink-soft); line-height:1.75; margin:0 0 10px;">
+      Most RAG tutorials and frameworks bundle all thirteen of these steps into a single function call -
+      you get an answer, but never see what happened in between. That's fine for shipping a product
+      quickly, but it hides exactly the parts worth understanding: why retrieval sometimes returns the
+      wrong chunk, why an LLM can still get the right context and give a wrong answer, and why "it worked
+      in my demo" is not the same as "it's reliable."
+    </p>
+    <p style="font-size:14px; color:var(--ink-soft); line-height:1.75; margin:0;">
+      This app deliberately keeps every stage as its own button with its own visible output - so you can
+      run Stage 7 and Stage 8 separately and see them disagree, watch Stage 9 resolve that disagreement,
+      watch Stage 10 catch a bad retrieval before it reaches the LLM, and run Stage 13 to prove (or
+      disprove) that a fix actually improved things. That's the whole point: RAG is not one black box, it
+      is a short pipeline of individually-understandable, individually-testable decisions.
+    </p>
   </div>
 
 </div>
