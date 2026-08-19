@@ -27,3 +27,8 @@ npm-debug.log*
 # Logs / temp
 *.log
 tmp/
+
+# Runtime artifacts (uploaded PDFs, generated MD, temp embeddings)
+app/uploads/
+app/outputs/
+app/embeddings_tmp/

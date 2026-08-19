@@ -10,10 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - No verbose phrases like "Let me explain", "Here's what I'll do", "comprehensive review".
 
 ## Explainability (ChatGPT-style clarity)
+- Prefer simple explanation before technical detail
 - Always explain for mixed audience (PM + Engineer)
 - Do not assume prior context — define key terms briefly
 - Show cause -> effect (why something works or breaks)
-- Prefer simple explanation before technical detail
+
 
 ## Response Structure (mandatory)
 1. Summary (2–3 lines: what + why)

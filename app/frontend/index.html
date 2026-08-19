@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PDF to Markdown - Stage 1</title>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 24px; background: #f7f7f8; color: #1a1a1a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #666; margin-bottom: 20px; font-size: 13px; }
+  .upload-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+  input[type=file] { flex: 1; }
+  button { padding: 8px 16px; background: #1a1a1a; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  select { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
+  .status { margin-bottom: 16px; font-size: 13px; color: #444; }
+  .panes { display: flex; gap: 16px; }
+  .pane { flex: 1; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px; min-height: 400px; max-height: 75vh; overflow-y: auto; }
+  .pane h2 { font-size: 14px; margin: 0 0 12px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+  pre { white-space: pre-wrap; word-wrap: break-word; font-size: 13px; line-height: 1.5; }
+  .md-rendered h1, .md-rendered h2, .md-rendered h3 { margin-top: 16px; }
+  .md-rendered table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+  .md-rendered td, .md-rendered th { border: 1px solid #ddd; padding: 4px 8px; font-size: 13px; }
+  .meta { font-size: 12px; color: #888; margin-top: 4px; }
+
+  .chunks-section { margin-top: 28px; }
+  .chunks-section h2 { font-size: 16px; margin-bottom: 4px; }
+  .chunks-sub { color: #666; font-size: 13px; margin-bottom: 14px; }
+  .chunk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-content: start; }
+  .chunk-grid.scrollable { max-height: 70vh; overflow-y: auto; padding: 4px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fafafa; }
+  .chunk-card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 12px 14px; }
+  .chunk-card.table-type { border-left: 4px solid #b5651d; }
+  .chunk-card.text-type { border-left: 4px solid #2b6cb0; }
+  .chunk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .chunk-idx { font-weight: 600; font-size: 13px; }
+  .chunk-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eee; color: #444; }
+  .chunk-badge.table { background: #fbe7d4; color: #7a3e00; }
+  .chunk-badge.overlap { background: #e9d8fd; color: #553c9a; }
+  .chunk-badge.similarity { background: #c6f6d5; color: #22543d; font-weight: 600; }
+  .chunk-badge.embed-ok { background: #c6f6d5; color: #22543d; }
+  .chunk-badge.embed-failed { background: #fed7d7; color: #822727; }
+  .chunk-badge.embed-pending { background: #eee; color: #888; }
+  .chunk-badge.store-ok { background: #bee3f8; color: #2a4365; }
+  .chunk-badge.store-failed { background: #fed7d7; color: #822727; }
+  .chunk-badge.store-pending { background: #eee; color: #888; }
+  .search-section { margin-top: 28px; }
+  .search-section h2 { font-size: 16px; margin-bottom: 4px; }
+  .doc-row { display: flex; justify-content: space-between; align-items: center; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+  .doc-info { font-size: 13px; }
+  .doc-info .doc-filename { font-weight: 600; }
+  .doc-info .doc-meta { color: #888; font-size: 11px; margin-top: 2px; }
+  .doc-delete-btn { background: #c53030; padding: 6px 12px; font-size: 12px; }
+  .doc-delete-btn:hover { background: #9b2c2c; }
+  .doc-empty { color: #888; font-size: 13px; padding: 8px 0; }
+  .chunk-meta { font-size: 11px; color: #888; margin-bottom: 8px; line-height: 1.5; }
+  .chunk-heading-path { font-size: 12px; color: #555; font-weight: 500; margin-bottom: 6px; }
+  .chunk-text { font-size: 12.5px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; max-height: 220px; overflow-y: auto; }
+  .chunk-text table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+  .chunk-text td { border: 1px solid #ddd; padding: 3px 6px; }
+  .overlap-highlight { background: #f3e8ff; border-bottom: 2px dotted #9f7aea; }
+
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+  .tab-btn { background: none; color: #666; border: none; border-radius: 0; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab-btn:hover { color: #1a1a1a; background: none; }
+  .tab-btn.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-btn-input" onclick="switchTab('input')">Input</button>
+  <button class="tab-btn" id="tab-btn-query" onclick="switchTab('query')">Query</button>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="tab-panel active" id="tab-panel-input">
+
+  <h1>PDF -> Markdown (Stage 1)</h1>
+  <div class="sub">Local pipeline: Docling layout-aware parser (headings/tables from real PDF structure)</div>
+
+  <div class="upload-row">
+    <input type="file" id="pdfFile" accept="application/pdf" onchange="resetForNewFile()">
+    <button id="convertBtn" onclick="convert()">Convert</button>
+  </div>
+
+  <div class="panes">
+    <div class="pane">
+      <h2>Cleaned Markdown (rendered)</h2>
+      <div id="mdRendered" class="md-rendered"></div>
+    </div>
+    <div class="pane">
+      <h2>Cleaned Markdown (source)</h2>
+      <pre id="mdOut"></pre>
+    </div>
+  </div>
+
+  <div class="chunk-trigger-row" style="margin-top:16px">
+    <button id="chunkBtn" onclick="doChunk()" disabled>Chunk (Stage 2: Docling)</button>
+    <button id="embedBtn" onclick="doEmbed()" disabled>Embed (Stage 3: bge-m3)</button>
+    <button id="storeBtn" onclick="doStore()" disabled>Store (Stage 4: pgvector)</button>
+  </div>
+
+  <div class="chunks-section" id="chunksSection" style="display:none">
+    <h2>Chunks (Stage 2)</h2>
+    <div class="chunks-sub" id="chunksSub"></div>
+    <div class="chunk-grid scrollable" id="chunkGrid"></div>
+  </div>
+
+  <div class="search-section" id="searchSection" style="display:none">
+    <h2>Search (Stage 5: query the pgvector store)</h2>
+    <div class="chunks-sub">Query is embedded (bge-m3) and matched against chunks stored in Postgres/pgvector via SQL cosine similarity - persists across server restarts.</div>
+    <div class="upload-row">
+      <input type="text" id="searchQuery" placeholder="e.g. How much can DSM claim monthly?" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="searchBtn" onclick="doSearch()">Search</button>
+    </div>
+    <div class="chunk-grid" id="searchResults"></div>
+  </div>
+
+  <div class="chunks-section">
+    <h2>Stored documents (Postgres)</h2>
+    <div class="chunks-sub">Every document currently persisted in pgvector. Delete removes just that document's chunks.</div>
+    <button onclick="loadDocuments()" style="margin-bottom:12px">Refresh list</button>
+    <div id="documentsList"></div>
+  </div>
+
+</div>
+
+<div class="tab-panel" id="tab-panel-query">
+
+  <h1>Query Processing (Stage 6)</h1>
+  <div class="sub">Light normalization: unicode + whitespace cleanup only - no LLM, no rewriting.</div>
+
+  <div class="upload-row">
+    <input type="text" id="rawQuery" placeholder="e.g.   AEPS   error 91 " style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+    <button id="normalizeBtn" onclick="doNormalize()">Normalize</button>
+  </div>
+
+  <div class="panes" id="normalizeResult" style="display:none">
+    <div class="pane" style="min-height:auto">
+      <h2>Raw query</h2>
+      <pre id="rawQueryOut"></pre>
+    </div>
+    <div class="pane" style="min-height:auto">
+      <h2>Normalized query</h2>
+      <pre id="normalizedQueryOut"></pre>
+    </div>
+  </div>
+  <div class="chunks-sub" id="normalizeStatus"></div>
+
+  <div class="search-section" style="margin-top:32px">
+    <h2>Semantic Search (Stage 7: query embedding -> vectorstore.search())</h2>
+    <div class="chunks-sub">Takes its input from Stage 6's normalized output above. Embedded (bge-m3), then matched against every stored chunk via pgvector cosine similarity. Edit below if needed before searching.</div>
+    <div class="upload-row">
+      <input type="text" id="stage7Query" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="stage7SearchBtn" onclick="doStage7Search()">Search</button>
+    </div>
+    <div class="chunks-sub" id="stage7Status"></div>
+    <div class="chunk-grid scrollable" id="stage7Results"></div>
+  </div>
+
+  <div class="search-section" style="margin-top:32px">
+    <h2>Keyword Search (Stage 8: PostgreSQL full-text search)</h2>
+    <div class="chunks-sub">Takes its input from Stage 6's normalized output above. No embedding call - exact/lexical token matching via tsvector + GIN index. Complementary to Stage 7: strong on exact codes/terms, weak on paraphrases. Edit below if needed before searching.</div>
+    <div class="upload-row">
+      <input type="text" id="stage8Query" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="stage8SearchBtn" onclick="doStage8Search()">Search</button>
+    </div>
+    <div class="chunks-sub" id="stage8Status"></div>
+    <div class="chunk-grid scrollable" id="stage8Results"></div>
+  </div>
+
+  <div class="search-section" style="margin-top:32px">
+    <h2>Hybrid Search (Stage 9: RRF fusion of Stage 7 + Stage 8)</h2>
+    <div class="chunks-sub">Takes its input from Stage 6's normalized output above. Runs semantic (Stage 7) and keyword (Stage 8) search in parallel, then combines both ranked lists via Reciprocal Rank Fusion - no raw-score comparison, just rank position. Edit below if needed before searching.</div>
+    <div class="upload-row">
+      <input type="text" id="stage9Query" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="stage9SearchBtn" onclick="doStage9Search()">Search</button>
+    </div>
+    <div class="chunks-sub" id="stage9Status"></div>
+    <div class="chunk-grid scrollable" id="stage9Results"></div>
+  </div>
+
+  <div class="search-section" style="margin-top:32px">
+    <h2>No-Answer Detection (Stage 10)</h2>
+    <div class="chunks-sub">Checks Stage 9's last result against TWO bars - passes if EITHER clears: RRF score (both sources agree) OR raw similarity (confident even if only one source found it). v1 was RRF-only and had a confirmed 56% false-negative rate on paraphrased questions - see app/eval/eval_set_v1.md. Thresholds are small-sample starting guesses - adjust and re-check freely.</div>
+    <div class="upload-row">
+      <label for="stage10RrfThreshold" style="font-size:13px; color:#444;">RRF threshold:</label>
+      <input type="number" id="stage10RrfThreshold" value="0.02" step="0.001" min="0" style="width:100px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <label for="stage10SimilarityFloor" style="font-size:13px; color:#444;">Similarity floor:</label>
+      <input type="number" id="stage10SimilarityFloor" value="0.45" step="0.01" min="0" max="1" style="width:100px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="stage10CheckBtn" onclick="doStage10Check()">Check</button>
+    </div>
+    <div id="stage10Banner" style="display:none; margin-top:12px; padding:12px 16px; border-radius:8px; font-size:14px; font-weight:500;"></div>
+  </div>
+
+  <div class="search-section" style="margin-top:32px">
+    <h2>Context Construction (Stage 11)</h2>
+    <div class="chunks-sub">Prepares Stage 9's surviving chunks for the LLM prompt: dedup exact repeats, merge chunks that are adjacent in the same document into one coherent block, restore document reading order (not RRF rank order), trim to a token budget by dropping lowest-relevance blocks first, then tag each with a citation marker [S1], [S2]...</div>
+    <div class="upload-row">
+      <label for="stage11TokenBudget" style="font-size:13px; color:#444;">Token budget:</label>
+      <input type="number" id="stage11TokenBudget" value="4000" step="100" min="100" style="width:100px; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="stage11BuildBtn" onclick="doStage11Build()">Build Context</button>
+    </div>
+    <div class="chunks-sub" id="stage11Status"></div>
+    <div class="chunk-grid scrollable" id="stage11Results"></div>
+  </div>
+
+  <div class="search-section" style="margin-top:32px">
+    <h2>Answer Generation (Stage 12: qwen2.5:7b)</h2>
+    <div class="chunks-sub">Takes its question from Stage 6's normalized output above, plus Stage 11's context blocks. Sends a grounded prompt to the local LLM (Ollama, qwen2.5:7b) and shows the answer. The LLM does not search anything - Stages 6-11 already found the evidence; this stage only writes the answer from it. Edit below if needed before generating.</div>
+    <div class="upload-row">
+      <input type="text" id="stage12Question" placeholder="Run Normalize above first, or type directly here" style="flex:1; padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px;">
+      <button id="stage12AnswerBtn" onclick="doStage12Answer()">Generate Answer</button>
+    </div>
+    <div class="chunks-sub" id="stage12Status"></div>
+    <div id="stage12AnswerBox" style="display:none; margin-top:12px; background:white; border:1px solid #ddd; border-radius:8px; padding:16px; font-size:14px; line-height:1.6; white-space:pre-wrap;"></div>
+    <details style="margin-top:10px" id="stage12PromptDetails">
+      <summary style="cursor:pointer; font-size:12px; color:#666;">Show exact prompt sent to the LLM</summary>
+      <pre id="stage12PromptOut" style="font-size:11.5px; background:#fafafa; border:1px solid #e5e5e5; border-radius:6px; padding:10px; max-height:300px; overflow-y:auto;"></pre>
+    </details>
+  </div>
+
+</div>
+
+<script>
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Minimal markdown -> HTML renderer (headings, bold, lists, tables, paragraphs).
+// No external dependencies, kept deliberately small for this eval-stage UI.
+function renderMarkdown(md) {
+  const lines = md.split("\n");
+  let html = "";
+  let inList = false;
+  let inTable = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      if (!inTable) { html += "<table>"; inTable = true; }
+      const isSep = /^[\s|:-]+$/.test(line);
+      if (!isSep) {
+        const cells = line.trim().slice(1, -1).split("|").map(c => c.trim());
+        html += "<tr>" + cells.map(c => `<td>${escapeHtml(c)}</td>`).join("") + "</tr>";
+      }
+      continue;
+    } else if (inTable) {
+      html += "</table>"; inTable = false;
+    }
+
+    if (/^#{1,6}\s/.test(line)) {
+      const level = line.match(/^#+/)[0].length;
+      html += `<h${level}>${escapeHtml(line.replace(/^#+\s*/, ""))}</h${level}>`;
+      continue;
+    }
+
+    if (/^\s*[-*]\s/.test(line)) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      html += `<li>${escapeHtml(line.replace(/^\s*[-*]\s/, ""))}</li>`;
+      continue;
+    } else if (inList) {
+      html += "</ul>"; inList = false;
+    }
+
+    if (line.trim() === "") { html += ""; continue; }
+    html += `<p>${escapeHtml(line)}</p>`;
+  }
+  if (inList) html += "</ul>";
+  if (inTable) html += "</table>";
+  return html;
+}
+
+function switchTab(name) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-panel-${name}`));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.id === `tab-btn-${name}`));
+  localStorage.setItem("lastTab", name);
+}
+
+function restoreLastTab() {
+  const last = localStorage.getItem("lastTab") || "query";
+  if (document.getElementById(`tab-panel-${last}`)) {
+    switchTab(last);
+  }
+}
+
+async function doNormalize() {
+  const input = document.getElementById("rawQuery");
+  const btn = document.getElementById("normalizeBtn");
+  const status = document.getElementById("normalizeStatus");
+  const resultBox = document.getElementById("normalizeResult");
+
+  if (!input.value) {
+    status.textContent = "Type a query first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Normalizing...";
+
+  const formData = new FormData();
+  formData.append("query", input.value);
+
+  try {
+    const res = await fetch("/query/normalize", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById("rawQueryOut").textContent = JSON.stringify(data.raw_query);
+    document.getElementById("normalizedQueryOut").textContent = JSON.stringify(data.normalized_query);
+    resultBox.style.display = "flex";
+    status.textContent = data.changed ? "Query was changed by normalization." : "Query was already clean - no change.";
+
+    // Stages 7, 8, 9, 12 all take their input from Stage 6's output - auto-fill, still editable.
+    document.getElementById("stage7Query").value = data.normalized_query;
+    document.getElementById("stage8Query").value = data.normalized_query;
+    document.getElementById("stage9Query").value = data.normalized_query;
+    document.getElementById("stage12Question").value = data.normalized_query;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Stage 9 reuses these if they match its current query - avoids
+// silently re-running Stage 7/8's searches from scratch.
+let lastStage7 = { query: null, results: null };
+let lastStage8 = { query: null, results: null };
+// Stage 10 re-checks this against a threshold, without a new search.
+let lastStage9Results = null;
+// Stage 12 answers from this, without rebuilding context.
+let lastStage11Blocks = null;
+
+async function doStage7Search() {
+  const queryInput = document.getElementById("stage7Query");
+  const btn = document.getElementById("stage7SearchBtn");
+  const status = document.getElementById("stage7Status");
+  const results = document.getElementById("stage7Results");
+
+  if (!queryInput.value.trim()) {
+    status.textContent = "Type a query first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Normalizing -> embedding (bge-m3) -> vectorstore.search()...";
+  results.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("query", queryInput.value.trim());
+  formData.append("top_k", "30");
+  // No job_id: searches across every stored document.
+  // top_k=30: wide enough for Stage 9 to reuse for fusion, not just display.
+
+  try {
+    const res = await fetch("/search", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    lastStage7 = { query: data.query, results: data.results };
+    results.innerHTML = data.results.slice(0, 5).map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
+    status.textContent = `Normalized query: "${data.query}" - top 5 of ${data.results.length} matches shown`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doStage8Search() {
+  const queryInput = document.getElementById("stage8Query");
+  const btn = document.getElementById("stage8SearchBtn");
+  const status = document.getElementById("stage8Status");
+  const results = document.getElementById("stage8Results");
+
+  if (!queryInput.value.trim()) {
+    status.textContent = "Type a query first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Normalizing -> PostgreSQL full-text search...";
+  results.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("query", queryInput.value.trim());
+  formData.append("top_k", "30");
+  // top_k=30: wide enough for Stage 9 to reuse for fusion, not just display.
+
+  try {
+    const res = await fetch("/search/keyword", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) {
+      lastStage8 = { query: queryInput.value.trim(), results: [] };
+      status.textContent = data.error;
+      return;
+    }
+
+    lastStage8 = { query: data.query, results: data.results };
+    results.innerHTML = data.results.slice(0, 5).map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
+    status.textContent = `Normalized query: "${data.query}" - top 5 of ${data.results.length} keyword matches shown`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doStage9Search() {
+  const queryInput = document.getElementById("stage9Query");
+  const btn = document.getElementById("stage9SearchBtn");
+  const status = document.getElementById("stage9Status");
+  const results = document.getElementById("stage9Results");
+
+  if (!queryInput.value.trim()) {
+    status.textContent = "Type a query first.";
+    return;
+  }
+
+  btn.disabled = true;
+  results.innerHTML = "";
+
+  const query = queryInput.value.trim();
+  const canReuse = lastStage7.query === query && lastStage8.query === query;
+
+  try {
+    let data;
+    if (canReuse) {
+      status.textContent = "Reusing Stage 7 + Stage 8's last results (same query) -> fusing (RRF)...";
+      const formData = new FormData();
+      formData.append("semantic_results", JSON.stringify(lastStage7.results));
+      formData.append("keyword_results", JSON.stringify(lastStage8.results));
+      formData.append("top_k", "5");
+      const res = await fetch("/search/fuse", { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      data = await res.json();
+    } else {
+      status.textContent = "Stage 7/8 not run for this exact query yet - fetching both, then fusing (RRF)...";
+      const formData = new FormData();
+      formData.append("query", query);
+      formData.append("top_k", "5");
+      const res = await fetch("/search/hybrid", { method: "POST", body: formData });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      data = await res.json();
+    }
+
+    if (data.error) {
+      status.textContent = data.error;
+      return;
+    }
+
+    lastStage9Results = data.results;
+    document.getElementById("stage10Banner").style.display = "none";
+    results.innerHTML = data.results.map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
+    status.textContent = `${canReuse ? "Reused" : "Fetched"} - ${data.semantic_count} semantic + ${data.keyword_count} keyword candidates fused into top ${data.results.length}`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doStage11Build() {
+  const btn = document.getElementById("stage11BuildBtn");
+  const status = document.getElementById("stage11Status");
+  const results = document.getElementById("stage11Results");
+  const tokenBudget = document.getElementById("stage11TokenBudget").value;
+
+  if (!lastStage9Results || lastStage9Results.length === 0) {
+    status.textContent = "Run Stage 9 first - nothing to build context from.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Deduplicating -> merging adjacent chunks -> restoring order -> applying token budget...";
+  results.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("chunks", JSON.stringify(lastStage9Results));
+  formData.append("token_budget", tokenBudget);
+
+  try {
+    const res = await fetch("/context/build", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) {
+      status.textContent = data.error;
+      return;
+    }
+
+    lastStage11Blocks = data.blocks;
+    results.innerHTML = data.blocks.map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
+    status.textContent = `${data.input_count} in -> ${data.after_dedup_count} after dedup -> ${data.after_merge_count} after merge -> ${data.final_count} kept (${data.total_tokens}/${data.token_budget} tokens, ${data.dropped.length} dropped for budget)`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doStage12Answer() {
+  const questionInput = document.getElementById("stage12Question");
+  const btn = document.getElementById("stage12AnswerBtn");
+  const status = document.getElementById("stage12Status");
+  const answerBox = document.getElementById("stage12AnswerBox");
+  const promptOut = document.getElementById("stage12PromptOut");
+
+  if (!lastStage11Blocks || lastStage11Blocks.length === 0) {
+    status.textContent = "Run Stage 11 first - nothing to answer from.";
+    return;
+  }
+  if (!questionInput.value.trim()) {
+    status.textContent = "Type a question first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Building prompt -> calling qwen2.5:7b (this can take 10-30s)...";
+  answerBox.style.display = "none";
+
+  const formData = new FormData();
+  formData.append("question", questionInput.value.trim());
+  formData.append("blocks", JSON.stringify(lastStage11Blocks));
+
+  try {
+    const res = await fetch("/answer", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) {
+      status.textContent = data.error;
+      return;
+    }
+
+    answerBox.style.display = "block";
+    answerBox.textContent = data.answer;
+    promptOut.textContent = data.prompt;
+    status.textContent = `Answered in ${data.elapsed_seconds}s using ${lastStage11Blocks.length} context block(s)`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function doStage10Check() {
+  const banner = document.getElementById("stage10Banner");
+  const rrfThreshold = parseFloat(document.getElementById("stage10RrfThreshold").value);
+  const similarityFloor = parseFloat(document.getElementById("stage10SimilarityFloor").value);
+
+  if (!lastStage9Results || lastStage9Results.length === 0) {
+    banner.style.display = "block";
+    banner.style.background = "#fed7d7";
+    banner.style.color = "#822727";
+    banner.textContent = "Run Stage 9 first - nothing to check yet.";
+    return;
+  }
+
+  const passes = r => r.rrf_score >= rrfThreshold || (r.similarity ?? 0) >= similarityFloor;
+
+  const top = lastStage9Results[0];
+  const hasAnswer = passes(top);
+  const passedCount = lastStage9Results.filter(passes).length;
+  const totalCount = lastStage9Results.length;
+  const simText = top.similarity !== undefined ? `, similarity ${top.similarity.toFixed(4)}` : "";
+
+  banner.style.display = "block";
+  if (hasAnswer) {
+    banner.style.background = "#c6f6d5";
+    banner.style.color = "#22543d";
+    banner.textContent = `Answer found - top RRF score ${top.rrf_score}${simText} (RRF>=${rrfThreshold} or sim>=${similarityFloor}). ${passedCount} of ${totalCount} chunks passed.`;
+  } else {
+    banner.style.background = "#fed7d7";
+    banner.style.color = "#822727";
+    banner.textContent = `No answer found - top RRF score ${top.rrf_score}${simText} (below both RRF>=${rrfThreshold} and sim>=${similarityFloor}). ${passedCount} of ${totalCount} chunks passed - results below this point should not be shown as relevant.`;
+  }
+}
+
+function resetForNewFile() {
+  document.getElementById("chunkBtn").disabled = true;
+  document.getElementById("chunksSection").style.display = "none";
+  document.getElementById("chunkGrid").innerHTML = "";
+  document.getElementById("embedBtn").disabled = true;
+  document.getElementById("storeBtn").disabled = true;
+  document.getElementById("searchSection").style.display = "none";
+  document.getElementById("searchResults").innerHTML = "";
+  currentJobId = null;
+}
+
+async function convert() {
+  const fileInput = document.getElementById("pdfFile");
+  const btn = document.getElementById("convertBtn");
+  const status = document.getElementById("status");
+
+  if (!fileInput.files.length) {
+    status.textContent = "Pick a PDF first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Converting (Docling layout-aware parse)...";
+  document.getElementById("mdOut").textContent = "";
+  document.getElementById("mdRendered").innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  try {
+    const res = await fetch("/convert", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById("mdOut").textContent = data.markdown;
+    document.getElementById("mdRendered").innerHTML = renderMarkdown(data.markdown);
+    status.textContent = `Done: converted in ${data.elapsed_seconds}s (job ${data.job_id})`;
+    document.getElementById("chunkBtn").disabled = false;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderChunkText(text, contentType, overlapText) {
+  if (contentType === "table") {
+    return renderMarkdown(text);
+  }
+  if (overlapText && text.startsWith(overlapText)) {
+    const rest = text.slice(overlapText.length);
+    return `<div style="white-space:pre-wrap"><span class="overlap-highlight">${escapeHtml(overlapText)}</span>${escapeHtml(rest)}</div>`;
+  }
+  return `<div style="white-space:pre-wrap">${escapeHtml(text)}</div>`;
+}
+
+let currentJobId = null;
+
+function embedBadgeHtml(status, error) {
+  if (status === "ok") return '<span class="chunk-badge embed-ok">embedded</span>';
+  if (status === "failed") return `<span class="chunk-badge embed-failed" title="${escapeHtml(error || '')}">embed failed</span>`;
+  return '<span class="chunk-badge embed-pending">not embedded</span>';
+}
+
+function storeBadgeHtml(status, error) {
+  if (status === "ok") return '<span class="chunk-badge store-ok">stored</span>';
+  if (status === "failed") return `<span class="chunk-badge store-failed" title="${escapeHtml(error || '')}">store failed</span>`;
+  return '<span class="chunk-badge store-pending">not stored</span>';
+}
+
+function chunkCardHtml(c, embedStatus, storeStatus) {
+  return `
+    <div class="chunk-card ${c.content_type}-type" id="chunk-card-${c.chunk_index}">
+      <div class="chunk-head">
+        <span class="chunk-idx">${c.citation_tag ? `[${c.citation_tag}]` : `#${c.chunk_index}`}</span>
+        <span>
+          ${c.similarity !== undefined ? `<span class="chunk-badge similarity">sim ${c.similarity}</span> ` : ''}
+          ${c.keyword_rank !== undefined ? `<span class="chunk-badge similarity">rank ${c.keyword_rank}</span> ` : ''}
+          ${c.rrf_score !== undefined ? `<span class="chunk-badge similarity" title="semantic rank: ${c.semantic_rank ?? 'not found'}, keyword rank: ${c.keyword_rank_position ?? 'not found'}">rrf ${c.rrf_score}</span> ` : ''}
+          <span class="embed-status-badge">${embedBadgeHtml(embedStatus ? embedStatus.status : "pending", embedStatus ? embedStatus.error : null)}</span>
+          <span class="store-status-badge">${storeBadgeHtml(storeStatus ? storeStatus.status : "pending", storeStatus ? storeStatus.error : null)}</span>
+          ${c.has_overlap ? '<span class="chunk-badge overlap">overlap</span> ' : ''}
+          <span class="chunk-badge ${c.content_type === 'table' ? 'table' : ''}">${c.content_type} - ${c.token_count} tok</span>
+        </span>
+      </div>
+      <div class="chunk-meta">
+        <div><b>id:</b> ${escapeHtml(c.chunk_id)}</div>
+        <div><b>source:</b> ${escapeHtml(c.source_file)}</div>
+        <div><b>page:</b> ${c.page_number ? c.page_number.join(", ") : "?"} &nbsp; <b>index:</b> ${c.chunk_index}</div>
+      </div>
+      ${c.rrf_formula ? `<div class="chunk-meta" style="background:#f3e8ff; padding:4px 8px; border-radius:4px;"><b>RRF calc:</b> ${escapeHtml(c.rrf_formula)} <span style="color:#888">(${escapeHtml(c.rrf_sources)})</span></div>` : ''}
+      ${c.merged_from && c.merged_from.length > 1 ? `<div class="chunk-meta" style="background:#e6fffa; padding:4px 8px; border-radius:4px;"><b>Merged:</b> chunks ${c.merged_from.join(", ")} combined (adjacent in source document)</div>` : ''}
+      <div class="chunk-heading-path"><b>section:</b> ${escapeHtml(c.section_heading || "(no heading)")}</div>
+      <div class="chunk-text">${renderChunkText(c.text, c.content_type, c.overlap_text)}</div>
+    </div>
+  `;
+}
+
+async function doChunk() {
+  const fileInput = document.getElementById("pdfFile");
+  const btn = document.getElementById("chunkBtn");
+  const status = document.getElementById("status");
+  const section = document.getElementById("chunksSection");
+  const grid = document.getElementById("chunkGrid");
+
+  if (!fileInput.files.length) {
+    status.textContent = "Pick a PDF first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Chunking (Docling parse + header-aware split)...";
+  section.style.display = "none";
+  document.getElementById("embedBtn").disabled = true;
+  document.getElementById("storeBtn").disabled = true;
+  document.getElementById("searchSection").style.display = "none";
+  grid.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+
+  try {
+    const res = await fetch("/chunk", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    currentJobId = data.job_id;
+
+    document.getElementById("chunksSub").textContent =
+      `${data.chunk_count} chunks in ${data.elapsed_seconds}s (job ${data.job_id}) - not embedded yet`;
+
+    grid.innerHTML = data.chunks.map(c => chunkCardHtml(c, null, null)).join("");
+
+    section.style.display = "block";
+    document.getElementById("embedBtn").disabled = false;
+    status.textContent = `Chunked: ${data.chunk_count} chunks (job ${data.job_id})`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doEmbed() {
+  const btn = document.getElementById("embedBtn");
+  const status = document.getElementById("status");
+
+  if (!currentJobId) {
+    status.textContent = "Run Chunk first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Embedding chunks (bge-m3)... (not stored yet - click Store next)";
+  document.getElementById("storeBtn").disabled = true;
+  document.getElementById("searchSection").style.display = "none";
+
+  const formData = new FormData();
+  formData.append("job_id", currentJobId);
+
+  try {
+    const res = await fetch("/embed", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById("chunksSub").textContent =
+      `${data.embedded_count} embedded, ${data.failed_count} failed, in ${data.elapsed_seconds}s (job ${data.job_id}) - not stored yet`;
+
+    // Patch each existing Stage 2 chunk card in place with its embed status.
+    for (const s of data.statuses) {
+      const card = document.getElementById(`chunk-card-${s.chunk_index}`);
+      if (!card) continue;
+      const badgeSlot = card.querySelector(".embed-status-badge");
+      if (badgeSlot) badgeSlot.innerHTML = embedBadgeHtml(s.status, s.error);
+    }
+
+    if (data.embedded_count > 0) {
+      document.getElementById("storeBtn").disabled = false;
+    }
+    status.textContent = `Embedded (not stored): ${data.embedded_count}/${data.embedded_count + data.failed_count} chunks (job ${data.job_id})`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doStore() {
+  const btn = document.getElementById("storeBtn");
+  const status = document.getElementById("status");
+
+  if (!currentJobId) {
+    status.textContent = "Run Chunk and Embed first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Storing embeddings in Postgres/pgvector...";
+
+  const formData = new FormData();
+  formData.append("job_id", currentJobId);
+
+  try {
+    const res = await fetch("/store", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById("chunksSub").textContent =
+      `${data.stored_count} stored, ${data.failed_count} failed, in ${data.elapsed_seconds}s (job ${data.job_id})`;
+
+    // Patch each existing Stage 2 chunk card in place with its store status.
+    for (const s of data.statuses) {
+      const card = document.getElementById(`chunk-card-${s.chunk_index}`);
+      if (!card) continue;
+      const badgeSlot = card.querySelector(".store-status-badge");
+      if (badgeSlot) badgeSlot.innerHTML = storeBadgeHtml(s.status, s.error);
+    }
+
+    if (data.stored_count > 0) {
+      document.getElementById("searchSection").style.display = "block";
+    }
+    status.textContent = `Stored in Postgres: ${data.stored_count}/${data.stored_count + data.failed_count} chunks (job ${data.job_id})`;
+    loadDocuments();
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function doSearch() {
+  const queryInput = document.getElementById("searchQuery");
+  const btn = document.getElementById("searchBtn");
+  const status = document.getElementById("status");
+  const results = document.getElementById("searchResults");
+
+  if (!currentJobId) {
+    status.textContent = "Run Chunk first.";
+    return;
+  }
+  if (!queryInput.value.trim()) {
+    status.textContent = "Type a query first.";
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = "Searching (embedding query + cosine similarity)...";
+  results.innerHTML = "";
+
+  const formData = new FormData();
+  formData.append("job_id", currentJobId);
+  formData.append("query", queryInput.value.trim());
+  formData.append("top_k", "5");
+
+  try {
+    const res = await fetch("/search", { method: "POST", body: formData });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    results.innerHTML = data.results.map(c => chunkCardHtml(c, { status: "ok" }, { status: "ok" })).join("");
+    status.textContent = `Search done: top ${data.results.length} matches for "${data.query}"`;
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function formatBytesOrDate(isoString) {
+  const d = new Date(isoString);
+  return d.toLocaleString();
+}
+
+async function loadDocuments() {
+  const list = document.getElementById("documentsList");
+  list.innerHTML = "Loading...";
+
+  try {
+    const res = await fetch("/documents");
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (!data.documents.length) {
+      list.innerHTML = '<div class="doc-empty">No documents stored yet.</div>';
+      return;
+    }
+
+    list.innerHTML = data.documents.map(doc => `
+      <div class="doc-row" id="doc-row-${doc.job_id}">
+        <div class="doc-info">
+          <div class="doc-filename">${escapeHtml(doc.filename)}</div>
+          <div class="doc-meta">job: ${escapeHtml(doc.job_id)} &nbsp;|&nbsp; ${doc.chunk_count} chunks &nbsp;|&nbsp; ${formatBytesOrDate(doc.uploaded_at)}</div>
+        </div>
+        <button class="doc-delete-btn" onclick="doDeleteDocument('${doc.job_id}', '${escapeHtml(doc.filename).replace(/'/g, "\\'")}')">Delete</button>
+      </div>
+    `).join("");
+  } catch (err) {
+    list.innerHTML = `<div class="doc-empty">Error loading documents: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function doDeleteDocument(jobId, filename) {
+  const status = document.getElementById("status");
+
+  if (!window.confirm(`Delete "${filename}" (job ${jobId}) and all its chunks? This cannot be undone.`)) {
+    status.textContent = "Delete cancelled.";
+    return;
+  }
+
+  const row = document.getElementById(`doc-row-${jobId}`);
+  if (row) row.style.opacity = "0.5";
+
+  try {
+    const res = await fetch(`/documents/${jobId}/delete`, { method: "POST" });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+
+    if (!data.deleted) {
+      status.textContent = `No document found for job ${jobId}.`;
+    } else {
+      status.textContent = `Deleted "${filename}": ${data.chunks_deleted} chunks removed.`;
+    }
+    loadDocuments();
+
+    if (jobId === currentJobId) {
+      resetForNewFile();
+    }
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+    if (row) row.style.opacity = "1";
+  }
+}
+
+loadDocuments();
+restoreLastTab();
+</script>
+
+</body>
+</html>
