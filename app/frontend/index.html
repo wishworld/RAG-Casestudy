@@ -58,6 +58,15 @@
   .chunk-text td { border: 1px solid #ddd; padding: 3px 6px; }
   .overlap-highlight { background: #f3e8ff; border-bottom: 2px dotted #9f7aea; }
 
+  .eval-row { display: grid; grid-template-columns: 60px 1fr 100px 100px 100px; gap: 10px; align-items: center; padding: 10px 12px; background: white; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
+  .eval-row:hover { background: #fafafa; }
+  .eval-row-header { font-weight: 600; color: #666; font-size: 11px; text-transform: uppercase; background: none; border: none; cursor: default; }
+  .eval-pill { font-size: 11px; padding: 3px 8px; border-radius: 10px; text-align: center; font-weight: 600; }
+  .eval-pill.pass { background: #c6f6d5; color: #22543d; }
+  .eval-pill.fail { background: #fed7d7; color: #822727; }
+  .eval-pill.na { background: #eee; color: #888; }
+  .eval-answer-detail { display: none; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; margin: -4px 0 8px 0; font-size: 13px; white-space: pre-wrap; }
+
   .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
   .tab-btn { background: none; color: #666; border: none; border-radius: 0; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
   .tab-btn:hover { color: #1a1a1a; background: none; }
@@ -71,6 +80,7 @@
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-btn-input" onclick="switchTab('input')">Input</button>
   <button class="tab-btn" id="tab-btn-query" onclick="switchTab('query')">Query</button>
+  <button class="tab-btn" id="tab-btn-eval" onclick="switchTab('eval')">RAG Eval</button>
 </div>
 
 <div class="status" id="status"></div>
@@ -224,6 +234,37 @@
 
 </div>
 
+<div class="tab-panel" id="tab-panel-eval">
+
+  <h1>RAG Eval (Stage 13)</h1>
+  <div class="sub">Runs a batch of questions through the FULL pipeline (Stages 6-12, including the LLM) and scores retrieval, no-answer detection, and answer quality automatically - instead of eyeballing results one at a time.</div>
+
+  <div class="search-section">
+    <h2>Run an eval set</h2>
+    <div class="chunks-sub">Each question runs through: normalize -> semantic+keyword search -> RRF fusion -> no-answer check -> context build -> LLM answer. A full run can take many minutes - progress updates live below.</div>
+    <div class="upload-row">
+      <select id="evalSetSelect" style="flex:1;"></select>
+      <button id="evalRunBtn" onclick="doEvalRun()">Run Eval</button>
+    </div>
+    <div class="chunks-sub" id="evalStatus"></div>
+    <div id="evalProgressBar" style="display:none; background:#eee; border-radius:6px; height:10px; margin-top:8px; overflow:hidden;">
+      <div id="evalProgressFill" style="background:#1a1a1a; height:100%; width:0%; transition:width 0.3s;"></div>
+    </div>
+  </div>
+
+  <div class="search-section" id="evalSummarySection" style="display:none; margin-top:24px;">
+    <h2>Scorecard</h2>
+    <div id="evalSummaryBox" style="background:white; border:1px solid #ddd; border-radius:8px; padding:16px; font-size:14px; line-height:1.8;"></div>
+  </div>
+
+  <div class="chunks-section" id="evalResultsSection" style="display:none; margin-top:24px;">
+    <h2>Per-question results</h2>
+    <div class="chunks-sub">PASS/FAIL per check. Click a row to see the full generated answer.</div>
+    <div id="evalResultsTable"></div>
+  </div>
+
+</div>
+
 <script>
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -278,6 +319,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-panel-${name}`));
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.id === `tab-btn-${name}`));
   localStorage.setItem("lastTab", name);
+  if (name === "eval") loadEvalSets();
 }
 
 function restoreLastTab() {
@@ -920,6 +962,148 @@ async function doDeleteDocument(jobId, filename) {
     status.textContent = "Error: " + err.message;
     if (row) row.style.opacity = "1";
   }
+}
+
+async function loadEvalSets() {
+  const select = document.getElementById("evalSetSelect");
+  try {
+    const res = await fetch("/eval/sets");
+    const data = await res.json();
+    if (!data.eval_sets.length) {
+      select.innerHTML = '<option value="">No eval sets found</option>';
+      return;
+    }
+    select.innerHTML = data.eval_sets.map(s =>
+      `<option value="${escapeHtml(s.file)}">${escapeHtml(s.name)} - ${s.question_count} questions (${escapeHtml(s.document || "?")})</option>`
+    ).join("");
+  } catch (err) {
+    select.innerHTML = `<option value="">Error loading eval sets</option>`;
+  }
+}
+
+let evalPollTimer = null;
+
+async function doEvalRun() {
+  const select = document.getElementById("evalSetSelect");
+  const btn = document.getElementById("evalRunBtn");
+  const status = document.getElementById("evalStatus");
+  const progressBar = document.getElementById("evalProgressBar");
+  const progressFill = document.getElementById("evalProgressFill");
+
+  if (!select.value) {
+    status.textContent = "No eval set selected.";
+    return;
+  }
+
+  btn.disabled = true;
+  select.disabled = true;
+  document.getElementById("evalSummarySection").style.display = "none";
+  document.getElementById("evalResultsSection").style.display = "none";
+  status.textContent = "Starting eval run...";
+  progressBar.style.display = "block";
+  progressFill.style.width = "0%";
+
+  const formData = new FormData();
+  formData.append("eval_set_file", select.value);
+
+  try {
+    const res = await fetch("/eval/run", { method: "POST", body: formData });
+    const data = await res.json();
+    if (data.error) {
+      status.textContent = data.error;
+      btn.disabled = false;
+      select.disabled = false;
+      return;
+    }
+    pollEvalStatus(data.job_id, data.total);
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+    btn.disabled = false;
+    select.disabled = false;
+  }
+}
+
+function pollEvalStatus(jobId, total) {
+  const status = document.getElementById("evalStatus");
+  const progressFill = document.getElementById("evalProgressFill");
+  const btn = document.getElementById("evalRunBtn");
+  const select = document.getElementById("evalSetSelect");
+
+  if (evalPollTimer) clearInterval(evalPollTimer);
+
+  evalPollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`/eval/status/${jobId}`);
+      const data = await res.json();
+
+      const pct = total > 0 ? Math.round((data.completed / total) * 100) : 0;
+      progressFill.style.width = pct + "%";
+      status.textContent = `Running: ${data.completed}/${data.total} questions completed...`;
+
+      if (data.status === "done") {
+        clearInterval(evalPollTimer);
+        status.textContent = `Done: ${data.total} questions in ${data.elapsed_seconds}s`;
+        renderEvalSummary(data.summary);
+        renderEvalResults(data.results);
+        btn.disabled = false;
+        select.disabled = false;
+      }
+    } catch (err) {
+      clearInterval(evalPollTimer);
+      status.textContent = "Error polling eval status: " + err.message;
+      btn.disabled = false;
+      select.disabled = false;
+    }
+  }, 3000);
+}
+
+function renderEvalSummary(summary) {
+  const box = document.getElementById("evalSummaryBox");
+  const pct = (passed, checked) => checked > 0 ? Math.round((passed / checked) * 100) : 0;
+
+  box.innerHTML = `
+    <div><b>Retrieval:</b> ${summary.retrieval.passed}/${summary.retrieval.checked} passed (${pct(summary.retrieval.passed, summary.retrieval.checked)}%)</div>
+    <div><b>No-answer detection:</b> ${summary.no_answer_detection.passed}/${summary.no_answer_detection.checked} passed (${pct(summary.no_answer_detection.passed, summary.no_answer_detection.checked)}%)</div>
+    <div><b>Answer quality:</b> ${summary.answer_quality.passed}/${summary.answer_quality.checked} passed (${pct(summary.answer_quality.passed, summary.answer_quality.checked)}%)</div>
+    <div style="margin-top:8px; color:${summary.errors > 0 ? '#822727' : '#888'}"><b>Errors:</b> ${summary.errors}/${summary.total}</div>
+  `;
+  document.getElementById("evalSummarySection").style.display = "block";
+}
+
+function evalPillHtml(passed) {
+  if (passed === null || passed === undefined) return '<span class="eval-pill na">n/a</span>';
+  return passed ? '<span class="eval-pill pass">PASS</span>' : '<span class="eval-pill fail">FAIL</span>';
+}
+
+function renderEvalResults(results) {
+  const table = document.getElementById("evalResultsTable");
+  const header = `
+    <div class="eval-row eval-row-header">
+      <div>ID</div><div>Question</div><div>Retrieval</div><div>No-Answer</div><div>Answer</div>
+    </div>`;
+  const rows = results.map((r, i) => `
+    <div class="eval-row" onclick="toggleEvalDetail(${i})">
+      <div>${escapeHtml(r.id)}</div>
+      <div>${escapeHtml(r.question)}</div>
+      <div>${evalPillHtml(r.retrieval_pass)}</div>
+      <div>${evalPillHtml(r.no_answer_pass)}</div>
+      <div>${evalPillHtml(r.answer_pass)}</div>
+    </div>
+    <div class="eval-answer-detail" id="eval-detail-${i}">
+      ${r.error ? `<b>Error:</b> ${escapeHtml(r.error)}` : `
+        <div><b>Top section:</b> ${escapeHtml(r.top_section || "(none)")}</div>
+        <div style="margin-top:6px"><b>Answer:</b> ${r.answer ? escapeHtml(r.answer) : "(no answer generated - has_answer was false)"}</div>
+        ${r.elapsed_llm_seconds ? `<div style="margin-top:6px; color:#888; font-size:12px;">LLM time: ${r.elapsed_llm_seconds}s</div>` : ''}
+      `}
+    </div>
+  `).join("");
+  table.innerHTML = header + rows;
+  document.getElementById("evalResultsSection").style.display = "block";
+}
+
+function toggleEvalDetail(i) {
+  const detail = document.getElementById(`eval-detail-${i}`);
+  detail.style.display = detail.style.display === "block" ? "none" : "block";
 }
 
 loadDocuments();

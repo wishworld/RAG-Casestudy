@@ -19,6 +19,7 @@ from fusion import reciprocal_rank_fusion
 from no_answer import check_no_answer, DEFAULT_RRF_THRESHOLD, DEFAULT_SIMILARITY_FLOOR
 from context_builder import build_context, DEFAULT_TOKEN_BUDGET
 from answer_generator import generate_answer
+from eval_runner import start_eval_run, get_eval_status, summarize
 import vectorstore
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,6 +28,7 @@ OUTPUT_DIR = BASE_DIR / "outputs"
 FRONTEND_DIR = BASE_DIR / "frontend"
 EMBEDDINGS_TMP_DIR = BASE_DIR / "embeddings_tmp"
 EMBEDDINGS_TMP_DIR.mkdir(exist_ok=True)
+EVAL_DIR = BASE_DIR / "eval"
 
 app = FastAPI(title="PDF to Markdown - Stage 1")
 
@@ -309,6 +311,58 @@ async def answer_question(question: str = Form(...), blocks: str = Form(...)):
         "prompt": result["prompt"],
         "elapsed_seconds": elapsed,
     }
+
+
+@app.get("/eval/sets")
+async def list_eval_sets():
+    """Lists available eval question sets (JSON files in app/eval/)."""
+    sets = []
+    for f in sorted(EVAL_DIR.glob("*.json")):
+        data = json.loads(f.read_text())
+        sets.append({
+            "file": f.name,
+            "name": data.get("name", f.stem),
+            "document": data.get("document"),
+            "question_count": len(data.get("questions", [])),
+        })
+    return {"eval_sets": sets}
+
+
+@app.post("/eval/run")
+async def eval_run(eval_set_file: str = Form(...)):
+    """Stage 13: starts a background eval run through the FULL pipeline
+    (Stages 6-12, including the LLM) for every question in the given
+    eval set. Returns immediately with a job_id - poll /eval/status/
+    {job_id} for progress, since a full run can take many minutes."""
+    eval_path = EVAL_DIR / eval_set_file
+    if not eval_path.exists() or eval_path.suffix != ".json":
+        return {"error": f"Eval set not found: {eval_set_file}"}
+
+    data = json.loads(eval_path.read_text())
+    questions = data.get("questions", [])
+    if not questions:
+        return {"error": f"Eval set {eval_set_file} has no questions."}
+
+    job_id = start_eval_run(questions)
+    return {"job_id": job_id, "total": len(questions)}
+
+
+@app.get("/eval/status/{job_id}")
+async def eval_status(job_id: str):
+    job = get_eval_status(job_id)
+    if not job:
+        return {"error": f"No eval job found for job_id={job_id}"}
+
+    response = {
+        "status": job["status"],
+        "total": job["total"],
+        "completed": job["completed"],
+        "results": job["results"],
+    }
+    if job["status"] == "done":
+        response["summary"] = summarize(job["results"])
+        response["elapsed_seconds"] = round(job["finished_at"] - job["started_at"], 1)
+    return response
 
 
 @app.get("/documents")
