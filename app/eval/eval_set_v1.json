@@ -1,0 +1,98 @@
+{
+  "name": "eval_set_v1",
+  "document": "Union_Budget_Analysis-2026-27.pdf",
+  "description": "Ground truth pulled directly from the source PDF. Mirrors app/eval/eval_set_v1.md.",
+  "questions": [
+    {
+      "id": "A1",
+      "question": "What is the fiscal deficit target for 2026-27?",
+      "expected_section_contains": "Deficits and Debt",
+      "expected_answer_contains": "4.3%",
+      "should_have_answer": true
+    },
+    {
+      "id": "A2",
+      "question": "What is the revenue deficit estimate for 2026-27?",
+      "expected_section_contains": "Budget Highlights",
+      "expected_answer_contains": "1.5%",
+      "should_have_answer": true
+    },
+    {
+      "id": "A3",
+      "question": "What is the total expenditure estimated for 2026-27?",
+      "expected_section_contains": "Expenditure",
+      "expected_answer_contains": "53,47,315",
+      "should_have_answer": true
+    },
+    {
+      "id": "A4",
+      "question": "What is the MAT rate after the change?",
+      "expected_section_contains": "Main Tax Proposals",
+      "expected_answer_contains": "14%",
+      "should_have_answer": true
+    },
+    {
+      "id": "A5",
+      "question": "What percentage of the divisible pool has the 16th Finance Commission recommended for states?",
+      "expected_section_contains": "16",
+      "expected_answer_contains": "41%",
+      "should_have_answer": true
+    },
+    {
+      "id": "B1",
+      "question": "How much is the government borrowing to cover its spending gap?",
+      "expected_section_contains": "Budget estimates",
+      "expected_answer_contains": "16,95,768",
+      "should_have_answer": true
+    },
+    {
+      "id": "B2",
+      "question": "Which ministry got the biggest budget increase this year?",
+      "expected_section_contains": "Ministries",
+      "expected_answer_contains": "Defence",
+      "should_have_answer": true
+    },
+    {
+      "id": "B3",
+      "question": "Is the government selling off stakes in public companies?",
+      "expected_section_contains": "Budget estimates",
+      "expected_answer_contains": "80,000",
+      "should_have_answer": true
+    },
+    {
+      "id": "B4",
+      "question": "What tax benefit is given to foreign cloud service companies?",
+      "expected_section_contains": "Main Tax Proposals",
+      "expected_answer_contains": "2047",
+      "should_have_answer": true
+    },
+    {
+      "id": "C2",
+      "question": "16 th Finance Commission",
+      "expected_section_contains": "16",
+      "expected_answer_contains": null,
+      "should_have_answer": true
+    },
+    {
+      "id": "D1",
+      "question": "What is the maternity leave policy?",
+      "expected_section_contains": null,
+      "expected_answer_contains": null,
+      "should_have_answer": false
+    },
+    {
+      "id": "D2",
+      "question": "How do I reset my UPI PIN?",
+      "expected_section_contains": null,
+      "expected_answer_contains": null,
+      "should_have_answer": false
+    },
+    {
+      "id": "D3",
+      "question": "What is the weather forecast for Delhi tomorrow?",
+      "expected_section_contains": null,
+      "expected_answer_contains": null,
+      "should_have_answer": false
+    }
+  ]
+}

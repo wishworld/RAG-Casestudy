@@ -1,0 +1,23 @@
+# Direct dependencies only - pip resolves the transitive tree (~115
+# packages, ~1.4GB with torch/docling's model weights included).
+# Pinned to the major/minor versions this app was built and tested against.
+
+fastapi==0.141.*
+uvicorn==0.52.*
+python-multipart==0.0.32
+
+# PDF parsing (Stage 1/2) - layout-aware, includes its own ML models
+docling==2.119.*
+docling-core==2.91.*
+
+# Chunk tokenization (Stage 2) - HuggingFace tokenizer, no GPU required
+transformers==5.8.*
+torch==2.13.*
+
+# Embedding + LLM calls (Stages 3, 12) - both via local Ollama HTTP API
+requests==2.34.*
+
+# Vector storage (Stage 4/5)
+numpy==2.5.*
+psycopg[binary]==3.3.*
+pgvector==0.5.*
